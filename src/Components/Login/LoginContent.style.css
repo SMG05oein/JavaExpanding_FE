@@ -1,0 +1,25 @@
+.login-logo-area {
+    text-align: center;
+}
+
+.login-form-logo {
+    height: 50px;
+}
+
+.login-btn {
+    background-color: #003a78 !important; /* 백석대 블루 */
+    border: none !important;
+    height: 45px;
+    font-weight: 600;
+}
+
+.login-btn:hover {
+    background-color: #002a56 !important;
+}
+
+.login-footer-links {
+    font-size: 13px;
+    color: #6c757d;
+    text-align: center;
+    cursor: pointer;
+}

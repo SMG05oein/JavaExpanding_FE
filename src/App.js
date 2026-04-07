@@ -10,7 +10,8 @@ import LoginPage from "./Pages/Login/LoginPage";
 function App() {
     return (
         <Routes>
-            <Route path="/"  element={<><GNB/><MainPage /></>} >
+            <Route path="/"  element={<><GNB/></>} >
+                <Route index element={<MainPage/>} />
                 <Route path="/login" element={<LoginPage />} />
             </Route>
         </Routes>

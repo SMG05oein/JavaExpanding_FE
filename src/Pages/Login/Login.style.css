@@ -1,0 +1,14 @@
+.login-page-wrapper {
+    background-color: #f8f9fa; /* 연한 그레이 배경 */
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-card-container {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
