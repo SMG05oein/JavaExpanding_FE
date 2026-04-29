@@ -6,6 +6,7 @@ import GNB from "./GNB/GNB";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import LoginContent from "./Components/Login/LoginContent";
 import LoginPage from "./Pages/Login/LoginPage";
+import FutsalReservationPage from "./Pages/FutsalReservationPage/FutsalReservationPage";
 
 function App() {
     return (
@@ -13,6 +14,7 @@ function App() {
             <Route path="/"  element={<><GNB/></>} >
                 <Route index element={<MainPage/>} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/futsal" element={<FutsalReservationPage />} />
             </Route>
         </Routes>
     );

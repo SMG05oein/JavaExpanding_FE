@@ -1,0 +1,96 @@
+.facility-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 요약 카드 그리드 */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.stat-card {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+}
+
+.stat-num {
+    font-size: 22px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+/* 시설 카드 */
+.facility-card {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+.facility-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.facility-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.facility-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+    color: #6c757d;
+    margin-bottom: 6px;
+}
+
+.facility-desc {
+    font-size: 13px;
+    color: #495057;
+    margin-bottom: 4px;
+}
+
+.facility-approval-note {
+    font-size: 12px;
+    color: #868e96;
+    margin-top: 6px;
+}
+
+/* 예약 버튼 */
+.reserve-btn {
+    margin-top: 12px;
+    padding: 7px 20px;
+    border-radius: 8px;
+    border: 1px solid #adb5bd;
+    background: none;
+    font-size: 13px;
+    cursor: pointer;
+    color: #212529;
+    transition: background-color 0.15s;
+}
+
+.reserve-btn:hover:not(.disabled) {
+    background-color: #f1f3f5;
+}
+
+.reserve-btn.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}

@@ -1,0 +1,30 @@
+.reservation-form-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.reservation-form-card {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 20px 24px;
+}
+
+.form-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 16px;
+}
+
+.submit-btn {
+    background-color: #534AB7 !important;
+    border-color: #534AB7 !important;
+    font-weight: 500;
+}
+
+.submit-btn:hover {
+    background-color: #3C3489 !important;
+    border-color: #3C3489 !important;
+}

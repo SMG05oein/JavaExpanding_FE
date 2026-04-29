@@ -1,0 +1,57 @@
+.reservation-page-wrapper {
+    background-color: #f8f9fa;
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.reservation-container {
+    width: 100%;
+    max-width: 720px;
+}
+
+/* 사용자 헤더 */
+.user-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background-color: #EEEDFE;
+    color: #3C3489;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.user-email {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+/* 탭 네비게이션 */
+.reservation-tabs .nav-link {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.reservation-tabs .nav-link.active {
+    color: #212529;
+    font-weight: 600;
+}
