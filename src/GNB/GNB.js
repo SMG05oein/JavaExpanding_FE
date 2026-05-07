@@ -35,12 +35,16 @@ const GNB = () => {
                     </Col>
 
                     {/* 우측: 메뉴 (Col 6만큼 차지, 텍스트 오른쪽 정렬) */}
-                    <Col xs={6} className="gnb-right text-end">
+                    <Col xs={6} className="gnb-right text-end d-flex justify-content-end">
+                        <div className="public-menu">
+                            <span className={'menu-item'} onClick={() => navigate('/futsal')}>시설물 현황</span>
+                            <span className="divider">|</span>
+                        </div>
                         {!isLoggedIn ? (
                             <div className="auth-menu">
-                                <span className="menu-item" onClick={() => window.location.href = '/signup'}>회원가입</span>
+                                <span className="menu-item" onClick={() => navigate('/signup')}>회원가입</span>
                                 <span className="divider">|</span>
-                                <span className="menu-item" onClick={() => window.location.href = '/login'}>로그인</span>
+                                <span className="menu-item" onClick={() => navigate('/login')}>로그인</span>
                             </div>
                         ) : (
                             <div className="user-menu">

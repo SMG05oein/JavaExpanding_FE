@@ -21,11 +21,12 @@ const useCheckLogin = () => {
             return response;
         } catch (error) {
             // 상세한 에러 로그 출력 (디버깅용)
-            if (error.response) {
-                console.error("서버 응답 에러:", error.response.status, error.response.data);
-            }
+            // if (error.response) {
+            //     console.error("서버 응답 에러:", error.response.status, error.response.data);
+            // }
             console.error("API 호출 중 오류 발생:", error);
-            throw error;
+            alert("로그인 정보가 없습니다.");
+            // throw error;
         }
     };
 

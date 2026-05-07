@@ -8,12 +8,19 @@ const useLoginStatus = create(
             isLoggedIn: false,
 
             // 로그인 액션
-            login: result => set({ isLoggedIn: true }),
+            login: (result) => {
+                const token = result.data.accessToken;
+                if (token) {
+                    localStorage.setItem('token', token);
+                }
+                set({ isLoggedIn: true });
+            },
 
             // 로그아웃 액션
             logout: () => {
-                set({ isLoggedIn: false });
-                // 필요시 로컬스토리지 토큰 삭제 로직 추가 가능
+                localStorage.removeItem('token');
+                set({ isLoggedIn: false, user: null });
+                // 메인 페이지로 이동시키려면 호출부에서 navigate('/') 수행
             },
 
             // 상태 수동 변경 (필요할 경우 사용)

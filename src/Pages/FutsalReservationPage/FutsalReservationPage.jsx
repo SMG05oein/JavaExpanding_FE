@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Container, Tab, Nav } from 'react-bootstrap';
 import FacilityList from '../../Components/FacilityList/FacilityList';
-import ReservationForm from '../../Components/ReservationForm/ReservationForm';
-import MyReservations from '../../Components/MyReservations/MyReservations';
+import ReservationForm from '../../Components/FacilityList/ReservationForm';
+import MyReservations from '../../Components/FacilityList/MyReservations';
 import './FutsalReservationPage.style.css';
 
 // 나중에 JWT/로그인 훅으로 교체

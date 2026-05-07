@@ -12,12 +12,6 @@ const MainPage = () => {
     const handleTemp = async() => {
         const token = localStorage.getItem('token');
         const result = await checkLogin({Authorization: `Bearer ${token}`})
-        // const result = await fetchData(
-        //     '/api/public_auh/check_status',
-        //     'POST',
-        //     null,
-        //     {Authorization: `Bearer ${token}`}
-        //     );
         console.log(result);
     }
 
