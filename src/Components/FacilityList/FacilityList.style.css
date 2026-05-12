@@ -4,6 +4,14 @@
     gap: 12px;
 }
 
+.empty-state {
+    padding: 16px;
+    border-radius: 10px;
+    background: #f8f9fa;
+    color: #6c757d;
+    font-size: 13px;
+}
+
 /* 요약 카드 그리드 */
 .stat-grid {
     display: grid;

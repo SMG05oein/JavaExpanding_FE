@@ -1,27 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Badge } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
 import './FacilityList.style.css';
 
 const STATUS_MAP = {
-    AVAILABLE:   { label: '사용 가능', variant: 'success' },
+    AVAILABLE: { label: '사용 가능', variant: 'success' },
     UNAVAILABLE: { label: '사용 불가', variant: 'danger' },
-    MAINTENANCE: { label: '점검 중',   variant: 'warning' },
+    MAINTENANCE: { label: '점검 중', variant: 'warning' },
 };
 
 const FacilityList = ({ onReserve }) => {
     const facilities = useReservationStore((s) => s.facilities);
     const reservations = useReservationStore((s) => s.reservations);
+    const isFacilitiesLoading = useReservationStore((s) => s.isFacilitiesLoading);
+    const facilitiesError = useReservationStore((s) => s.facilitiesError);
+    const loadFacilities = useReservationStore((s) => s.loadFacilities);
+
+    useEffect(() => {
+        loadFacilities();
+    }, [loadFacilities]);
 
     const stats = {
         available: facilities.filter((f) => f.status === 'AVAILABLE').length,
-        pending:   reservations.filter((r) => r.status === 'PENDING').length,
-        total:     facilities.length,
+        pending: reservations.filter((r) => r.status === 'PENDING').length,
+        total: facilities.length,
     };
 
     return (
         <div className="facility-list">
-            {/* 요약 카드 */}
             <div className="stat-grid">
                 <div className="stat-card">
                     <div className="stat-num">{stats.available}</div>
@@ -37,40 +43,52 @@ const FacilityList = ({ onReserve }) => {
                 </div>
             </div>
 
-            {/* 시설 카드 목록 */}
-            {facilities.map((facility) => {
-                const { label, variant } = STATUS_MAP[facility.status] ?? { label: facility.status, variant: 'secondary' };
-                const isAvailable = facility.status === 'AVAILABLE';
+            {isFacilitiesLoading && <div className="empty-state">시설 목록을 불러오는 중입니다...</div>}
+            {!isFacilitiesLoading && facilitiesError && <div className="empty-state">{facilitiesError}</div>}
+            {!isFacilitiesLoading && !facilitiesError && facilities.length === 0 && (
+                <div className="empty-state">등록된 시설이 없습니다.</div>
+            )}
 
-                return (
-                    <div key={facility.id} className="facility-card">
-                        <div className="facility-header">
-                            <span className="facility-name">{facility.name}</span>
-                            <Badge bg={variant}>{label}</Badge>
+            {!isFacilitiesLoading &&
+                !facilitiesError &&
+                facilities.map((facility) => {
+                    const { label, variant } = STATUS_MAP[facility.status] ?? {
+                        label: facility.status,
+                        variant: 'secondary',
+                    };
+                    const isAvailable = facility.status === 'AVAILABLE';
+
+                    return (
+                        <div key={facility.id} className="facility-card">
+                            <div className="facility-header">
+                                <span className="facility-name">{facility.name}</span>
+                                <Badge bg={variant}>{label}</Badge>
+                            </div>
+
+                            <div className="facility-meta">
+                                <span>위치 {facility.location}</span>
+                                <span>최대 {facility.capacity}명</span>
+                                <span>
+                                    {facility.open_time} ~ {facility.close_time}
+                                </span>
+                            </div>
+
+                            <div className="facility-desc">{facility.description}</div>
+
+                            {facility.requires_approval && (
+                                <div className="facility-approval-note">* 관리자 승인 후 사용 가능합니다.</div>
+                            )}
+
+                            <button
+                                className={`reserve-btn ${!isAvailable ? 'disabled' : ''}`}
+                                disabled={!isAvailable}
+                                onClick={() => onReserve(facility.id)}
+                            >
+                                {isAvailable ? '예약하러 가기' : '예약 불가'}
+                            </button>
                         </div>
-
-                        <div className="facility-meta">
-                            <span>위치 {facility.location}</span>
-                            <span>최대 {facility.capacity}명</span>
-                            <span>{facility.open_time} ~ {facility.close_time}</span>
-                        </div>
-
-                        <div className="facility-desc">{facility.description}</div>
-
-                        {facility.requires_approval && (
-                            <div className="facility-approval-note">* 관리자 승인 후 사용 가능합니다.</div>
-                        )}
-
-                        <button
-                            className={`reserve-btn ${!isAvailable ? 'disabled' : ''}`}
-                            disabled={!isAvailable}
-                            onClick={() => onReserve(facility.id)}
-                        >
-                            {isAvailable ? '예약하러 가기' : '예약 불가'}
-                        </button>
-                    </div>
-                );
-            })}
+                    );
+                })}
         </div>
     );
 };

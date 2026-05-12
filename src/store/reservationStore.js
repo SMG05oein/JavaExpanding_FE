@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import axios from 'axios';
 
 // 임시 하드코딩 데이터 (추후 API 연동 가능)
 const initialFacilities = [
@@ -74,6 +75,46 @@ let nextResIndex = 3;
 const useReservationStore = create((set, get) => ({
     facilities: initialFacilities,
     reservations: initialReservations,
+    isFacilitiesLoading: false,
+    facilitiesError: null,
+
+    loadFacilities: async () => {
+        set({ isFacilitiesLoading: true, facilitiesError: null });
+        try {
+            const baseURL = process.env.REACT_APP_API_URL;
+            const response = await axios.get(`${baseURL}/api/facility/list?page=0`, {
+                headers: {
+                    Accept: '*/*',
+                },
+            });
+
+            const pageContent = Array.isArray(response?.data?.content) ? response.data.content : [];
+            const mappedFacilities = pageContent.map((facility) => ({
+                id: `fac-${facility.facIdx}`,
+                name: facility.facName,
+                location: facility.facLocation,
+                description: facility.facDescription ?? '',
+                capacity: 10,
+                status: 'AVAILABLE',
+                requires_approval: true,
+                open_time: '09:00',
+                close_time: '22:00',
+                created_by: 'admin',
+            }));
+
+            set({
+                facilities: mappedFacilities,
+                isFacilitiesLoading: false,
+                facilitiesError: null,
+            });
+        } catch (error) {
+            console.error('시설 목록 조회 실패:', error);
+            set({
+                isFacilitiesLoading: false,
+                facilitiesError: '시설 목록을 불러오지 못했습니다.',
+            });
+        }
+    },
 
     // 시설 조회
     getFacilityById: (id) =>
