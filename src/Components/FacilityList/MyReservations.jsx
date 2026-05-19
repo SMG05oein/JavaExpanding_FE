@@ -1,28 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge, Alert } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
 import './MyReservations.style.css';
 
 const STATUS_MAP = {
-    PENDING:   { label: '승인 대기', variant: 'warning' },
-    APPROVED:  { label: '승인 완료', variant: 'success' },
-    REJECTED:  { label: '거절됨',    variant: 'danger' },
-    CANCELLED: { label: '취소됨',    variant: 'secondary' },
+    '대기':   { label: '승인 대기', variant: 'warning' },
+    '승인':   { label: '승인 완료', variant: 'success' },
+    '거절':   { label: '거절됨',    variant: 'danger' },
+    '취소':   { label: '취소됨',    variant: 'secondary' },
 };
 
 const MyReservations = ({ userId }) => {
     const getReservationsByUser = useReservationStore((s) => s.getReservationsByUser);
     const getFacilityById = useReservationStore((s) => s.getFacilityById);
     const cancelReservation = useReservationStore((s) => s.cancelReservation);
+    const loadMyReservations = useReservationStore((s) => s.loadMyReservations);
+    const loadFacilities = useReservationStore((s) => s.loadFacilities);
 
     const [alert, setAlert] = useState(null);
+
+    useEffect(() => {
+        loadFacilities();
+        loadMyReservations();
+    }, [loadFacilities, loadMyReservations]);
 
     const reservations = getReservationsByUser(userId).sort((a, b) =>
         (a.reservation_date + a.start_time) > (b.reservation_date + b.start_time) ? 1 : -1
     );
 
-    const handleCancel = (reservationId) => {
-        const result = cancelReservation(reservationId, userId);
+    const handleCancel = async (reservationId) => {
+        const result = await cancelReservation(reservationId);
         setAlert({ type: result.success ? 'success' : 'danger', message: result.message });
         setTimeout(() => setAlert(null), 3000);
     };
@@ -41,14 +48,14 @@ const MyReservations = ({ userId }) => {
                 reservations.map((res) => {
                     const facility = getFacilityById(res.facility_id);
                     const { label, variant } = STATUS_MAP[res.status] ?? { label: res.status, variant: 'secondary' };
-                    const canCancel = res.status === 'PENDING' || res.status === 'APPROVED';
+                    const canCancel = res.status === '대기' || res.status === '승인';
 
                     return (
                         <div key={res.id} className="reservation-card">
                             <div className="res-row">
                                 <div className="res-info">
                                     <div className="res-facility-name">
-                                        {facility?.name ?? res.facility_id}
+                                        {facility?.name ?? res.facility_name ?? res.facility_id}
                                         <Badge bg={variant} className="ms-2">{label}</Badge>
                                     </div>
                                     <div className="res-time">

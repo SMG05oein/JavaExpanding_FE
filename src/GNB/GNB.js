@@ -12,8 +12,6 @@ const GNB = () => {
     const handleLogout = () => {
         if (window.confirm("로그아웃 하시겠습니까?")) {
             logout();
-            // alert("로그아웃 되었습니다.");
-            navigate('/');
         }
     };
 
@@ -35,9 +33,9 @@ const GNB = () => {
                     </Col>
 
                     {/* 우측: 메뉴 (Col 6만큼 차지, 텍스트 오른쪽 정렬) */}
-                    <Col xs={6} className="gnb-right text-end d-flex justify-content-end">
+                    <Col xs={6} className="gnb-right text-end d-flex justify-content-end align-items-center">
                         <div className="public-menu">
-                            <span className={'menu-item'} onClick={() => navigate('/futsal')}>시설물 현황</span>
+                            <span className="menu-item" onClick={() => navigate('/facilities')}>시설 목록</span>
                             <span className="divider">|</span>
                         </div>
                         {!isLoggedIn ? (
@@ -50,7 +48,7 @@ const GNB = () => {
                             <div className="user-menu">
                                 <span className="menu-item" onClick={() => handleLogout()}>로그아웃</span>
                                 <span className="divider">|</span>
-                                <span className="menu-item">마이페이지</span>
+                                <span className="menu-item" onClick={() => navigate('/mypage')}>마이페이지</span>
                             </div>
                         )}
                     </Col>

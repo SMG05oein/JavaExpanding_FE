@@ -1,33 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import MainContent from '../../Components/MainPage/MainContent';
 import './MainPage.style.css';
-import {Button} from "react-bootstrap";
-import useApi from "../../Hooks/Api/useApi";
-import useCheckLogin from "../../Hooks/Api/useCheckLogin";
+import useReservationStore from '../../store/reservationStore';
 
 const MainPage = () => {
-    const { fetchData } = useApi();
-    const { checkLogin } = useCheckLogin();
+    const loadFacilities = useReservationStore((s) => s.loadFacilities);
 
-    const handleTemp = async() => {
-        const token = localStorage.getItem('token');
-        const result = await checkLogin({Authorization: `Bearer ${token}`})
-        console.log(result);
-    }
+    useEffect(() => {
+        // 메인 페이지 진입 시 실시간 시설 상태 정보를 새로 불러옴
+        loadFacilities();
+    }, [loadFacilities]);
 
     return (
-        <div className="main-page-container">
-            <header className="main-header">
-                <h1>백석대 통합 예매 시스템</h1>
-            </header>
-            <main>
+        <div className="main-page-wrapper">
+            <main className="main-content-area">
                 <MainContent />
             </main>
-            <Button onClick={() => handleTemp()}>
-                Test
-            </Button>
+            
+            <footer className="main-footer">
+                <div className="footer-container">
+                    <p>© {new Date().getFullYear()} 백석대학교 통합 예매 시스템. All Rights Reserved.</p>
+                    <p className="footer-subtext">본 시스템은 백석대학교 학내 체육 시설 및 세미나실 예약을 지원하기 위한 통합 플랫폼입니다.</p>
+                </div>
+            </footer>
         </div>
     );
 };
 
-export default MainPage;
+export default MainPage;

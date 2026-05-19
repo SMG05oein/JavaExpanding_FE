@@ -1,17 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Alert, Row, Col } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
-import useLoginStatus from '../../Hooks/Status/useLoginStatus';
 import './ReservationForm.style.css';
 
 const ReservationForm = ({ preSelectedFacilityId = '' }) => {
     const getAvailableFacilities = useReservationStore((s) => s.getAvailableFacilities);
     const getFacilityById = useReservationStore((s) => s.getFacilityById);
     const createReservation = useReservationStore((s) => s.createReservation);
-
-    // 로그인 훅과 실제 사용자 정보를 연동하면 교체
-    const { isLoggedIn } = useLoginStatus();
-    const currentUserId = isLoggedIn ? 'user-001' : 'guest';
 
     const [form, setForm] = useState({
         facilityId: preSelectedFacilityId,
@@ -39,7 +34,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
         setForm((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setAlert(null);
 
@@ -64,14 +59,13 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
             }
         }
 
-        const result = createReservation({
+        const result = await createReservation({
             facilityId,
             date,
             startTime,
             endTime,
             purpose,
             headcount: Number(headcount),
-            userId: currentUserId,
         });
 
         setAlert({ type: result.success ? 'success' : 'danger', message: result.message });
