@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Badge } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
 import './FacilityList.style.css';
@@ -16,15 +16,27 @@ const FacilityList = ({ onReserve }) => {
     const facilitiesError = useReservationStore((s) => s.facilitiesError);
     const loadFacilities = useReservationStore((s) => s.loadFacilities);
 
+    const [page, setPage] = useState(1);
+    const pageSize = 5;
+    const totalPages = Math.ceil(facilities.length / pageSize);
+
     useEffect(() => {
         loadFacilities();
     }, [loadFacilities]);
+
+    useEffect(() => {
+        if (totalPages > 0 && page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [page, totalPages]);
 
     const stats = {
         available: facilities.filter((f) => f.status === 'AVAILABLE').length,
         pending: reservations.filter((r) => r.status === 'PENDING').length,
         total: facilities.length,
     };
+
+    const currentFacilities = facilities.slice((page - 1) * pageSize, page * pageSize);
 
     return (
         <div className="facility-list">
@@ -51,7 +63,7 @@ const FacilityList = ({ onReserve }) => {
 
             {!isFacilitiesLoading &&
                 !facilitiesError &&
-                facilities.map((facility) => {
+                currentFacilities.map((facility) => {
                     const { label, variant } = STATUS_MAP[facility.status] ?? {
                         label: facility.status,
                         variant: 'secondary',
@@ -89,6 +101,34 @@ const FacilityList = ({ onReserve }) => {
                         </div>
                     );
                 })}
+
+            {!isFacilitiesLoading && !facilitiesError && totalPages > 1 && (
+                <div className="pagination-nav">
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={page === 1}
+                    >
+                        이전
+                    </button>
+                    {[...Array(totalPages)].map((_, index) => (
+                        <button
+                            key={index + 1}
+                            className={`pagination-button ${page === index + 1 ? 'active' : ''}`}
+                            onClick={() => setPage(index + 1)}
+                        >
+                            {index + 1}
+                        </button>
+                    ))}
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                        disabled={page === totalPages}
+                    >
+                        다음
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
