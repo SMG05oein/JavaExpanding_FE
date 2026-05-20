@@ -2,12 +2,14 @@ import { create } from 'zustand';
 
 const useReservationStore = create((set, get) => ({
     facilities: [],
+    allFacilities: [],
     reservations: [],
     isFacilitiesLoading: false,
     facilitiesError: null,
 
     // Setters
     setFacilities: (facilities) => set({ facilities }),
+    setAllFacilities: (allFacilities) => set({ allFacilities }),
     setReservations: (reservations) => set({ reservations }),
     setIsFacilitiesLoading: (isFacilitiesLoading) => set({ isFacilitiesLoading }),
     setFacilitiesError: (facilitiesError) => set({ facilitiesError }),

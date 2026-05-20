@@ -60,6 +60,22 @@
     background-color: #f8f9fa;
 }
 
+.edit-btn {
+    flex-shrink: 0;
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid #0d6efd;
+    background: none;
+    cursor: pointer;
+    color: #0d6efd;
+    transition: background-color 0.15s;
+}
+
+.edit-btn:hover {
+    background-color: #eef2ff;
+}
+
 .empty-state {
     text-align: center;
     padding: 2rem;

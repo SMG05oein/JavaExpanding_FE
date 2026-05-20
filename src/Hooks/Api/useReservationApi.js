@@ -9,6 +9,7 @@ const useReservationApi = () => {
 
     // Zustand actions
     const setFacilities = useReservationStore((s) => s.setFacilities);
+    const setAllFacilities = useReservationStore((s) => s.setAllFacilities);
     const setReservations = useReservationStore((s) => s.setReservations);
     const setIsFacilitiesLoading = useReservationStore((s) => s.setIsFacilitiesLoading);
     const setFacilitiesError = useReservationStore((s) => s.setFacilitiesError);
@@ -209,11 +210,123 @@ const useReservationApi = () => {
         }
     }, [baseURL, logout, loadMyReservations]);
 
+    // 5. 전체 시설 목록 로드 (실시간 예약하기 전용)
+    const loadAllFacilities = useCallback(async () => {
+        try {
+            const response = await axios.get(`${baseURL}/api/facility/allList`, {
+                headers: { Accept: '*/*' }
+            });
+            const data = Array.isArray(response?.data) ? response.data : [];
+            const mapped = data.map((facility) => ({
+                id: `fac-${facility.facIdx}`,
+                name: facility.facName,
+                location: '학내 구장/세미나실',
+                capacity: 10,
+                status: 'AVAILABLE',
+                open_time: '09:00',
+                close_time: '22:00'
+            }));
+
+            const mappedWithTimes = await Promise.all(
+                mapped.map(async (fac) => {
+                    let open_time = '09:00';
+                    let close_time = '22:00';
+                    try {
+                        const token = localStorage.getItem('token');
+                        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                        const formatTime = (time) => {
+                            if (!time) return '';
+                            if (typeof time === 'string') return time.slice(0, 5);
+                            const hour = String(time.hour !== undefined ? time.hour : 0).padStart(2, '0');
+                            const minute = String(time.minute !== undefined ? time.minute : 0).padStart(2, '0');
+                            return `${hour}:${minute}`;
+                        };
+                        const timeIdx = fac.id.replace('fac-', '');
+                        const timeRes = await axios.get(`${baseURL}/api/facility-time/list/${timeIdx}`, { headers });
+                        if (Array.isArray(timeRes.data) && timeRes.data.length > 0) {
+                            const activeTime = timeRes.data.find((d) => d.facTimeStatus === 'OPEN') || timeRes.data[0];
+                            if (activeTime.facOpen) open_time = formatTime(activeTime.facOpen);
+                            if (activeTime.facClose) close_time = formatTime(activeTime.facClose);
+                        }
+                    } catch (e) {}
+                    return { ...fac, open_time, close_time };
+                })
+            );
+
+            setAllFacilities(mappedWithTimes);
+        } catch (error) {
+            console.error('전체 시설 목록 조회 실패:', error);
+        }
+    }, [baseURL, setAllFacilities]);
+
+    // 6. 예약 수정
+    const updateReservation = useCallback(async (reservationId, { facilityId, date, startTime, endTime, purpose, headcount }) => {
+        const token = localStorage.getItem('token');
+        if (!token) return { success: false, message: '로그인이 필요합니다.' };
+
+        const resIdx = parseInt(reservationId.replace('res-', ''));
+        if (isNaN(resIdx)) {
+            return { success: false, message: '예약 ID가 유효하지 않습니다.' };
+        }
+
+        const facIdx = parseInt(facilityId.replace('fac-', ''));
+        if (isNaN(facIdx)) {
+            return { success: false, message: '시설 ID가 유효하지 않습니다.' };
+        }
+
+        try {
+            const formatTimeString = (timeStr) => {
+                if (!timeStr) return '';
+                const parts = timeStr.split(':');
+                if (parts.length === 2) {
+                    return `${parts[0]}:${parts[1]}:00`;
+                }
+                return timeStr;
+            };
+
+            const formattedStart = formatTimeString(startTime);
+            const formattedEnd = formatTimeString(endTime);
+
+            await axios.post(`${baseURL}/api/reservation/update/${resIdx}`, {
+                facIdx,
+                resDate: date,
+                resStart: formattedStart,
+                resEnd: formattedEnd,
+                resPurpose: purpose,
+                resHeadcount: parseInt(headcount)
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': '*/*'
+                }
+            });
+
+            await loadMyReservations();
+
+            return {
+                success: true,
+                message: '예약이 성공적으로 수정되었습니다.'
+            };
+        } catch (error) {
+            console.error('예약 수정 API 에러:', error);
+            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                localStorage.removeItem('token');
+                logout();
+                return { success: false, message: '인증에 실패했습니다. 다시 로그인해 주세요.' };
+            }
+            const errMsg = error.response?.data?.message || error.response?.data || '예약 수정에 실패했습니다.';
+            return { success: false, message: errMsg };
+        }
+    }, [baseURL, logout, loadMyReservations]);
+
     return {
         loadFacilities,
         loadMyReservations,
         createReservation,
-        cancelReservation
+        cancelReservation,
+        loadAllFacilities,
+        updateReservation
     };
 };
 

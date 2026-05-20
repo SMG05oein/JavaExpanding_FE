@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Form, Button, Alert, Row, Col } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
 import useReservationApi from '../../Hooks/Api/useReservationApi';
 import './ReservationForm.style.css';
 
 const ReservationForm = ({ preSelectedFacilityId = '' }) => {
-    const getAvailableFacilities = useReservationStore((s) => s.getAvailableFacilities);
-    const getFacilityById = useReservationStore((s) => s.getFacilityById);
-    const { createReservation } = useReservationApi();
+    const allFacilities = useReservationStore((s) => s.allFacilities);
+    const { loadAllFacilities, createReservation } = useReservationApi();
 
     const [form, setForm] = useState({
         facilityId: preSelectedFacilityId,
@@ -18,6 +17,14 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
         headcount: 6,
     });
     const [alert, setAlert] = useState(null); // { type: 'success'|'danger', message }
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+    const [displayVal, setDisplayVal] = useState('');
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        loadAllFacilities();
+    }, [loadAllFacilities]);
 
     useEffect(() => {
         if (preSelectedFacilityId) {
@@ -25,8 +32,26 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
         }
     }, [preSelectedFacilityId]);
 
-    const availableFacilities = getAvailableFacilities();
-    const selectedFacility = getFacilityById(form.facilityId);
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filteredFacilities = allFacilities.filter((f) =>
+        f.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const selectedFacility = allFacilities.find((f) => f.id === form.facilityId) || null;
+
+    useEffect(() => {
+        if (!isOpen) {
+            setDisplayVal(selectedFacility ? selectedFacility.name : '');
+        }
+    }, [isOpen, selectedFacility]);
 
     const today = new Date().toISOString().slice(0, 10);
 
@@ -73,6 +98,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
 
         if (result.success) {
             setForm({ facilityId: '', date: '', startTime: '', endTime: '', purpose: '', headcount: 6 });
+            setSearchTerm('');
         }
     };
 
@@ -91,12 +117,48 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                     {/* 시설 선택 */}
                     <Form.Group className="mb-3">
                         <Form.Label>시설 선택</Form.Label>
-                        <Form.Select name="facilityId" value={form.facilityId} onChange={handleChange}>
-                            <option value="">-- 시설을 선택하세요 --</option>
-                            {availableFacilities.map((f) => (
-                                <option key={f.id} value={f.id}>{f.name}</option>
-                            ))}
-                        </Form.Select>
+                        <div ref={dropdownRef} className="position-relative">
+                            <Form.Control
+                                type="text"
+                                placeholder="🔍 시설을 선택하거나 검색하세요..."
+                                value={displayVal}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setDisplayVal(e.target.value);
+                                    setIsOpen(true);
+                                }}
+                                onFocus={() => {
+                                    setIsOpen(true);
+                                    setSearchTerm('');
+                                    setDisplayVal('');
+                                }}
+                            />
+                            {isOpen && (
+                                <div className="dropdown-menu show w-100" style={{ 
+                                    maxHeight: '200px', 
+                                    overflowY: 'auto',
+                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                }}>
+                                    {filteredFacilities.length === 0 ? (
+                                        <div className="dropdown-item text-muted">검색 결과가 없습니다.</div>
+                                    ) : (
+                                        filteredFacilities.map((f) => (
+                                            <button
+                                                key={f.id}
+                                                type="button"
+                                                className="dropdown-item text-start"
+                                                onClick={() => {
+                                                    setForm((prev) => ({ ...prev, facilityId: f.id }));
+                                                    setIsOpen(false);
+                                                }}
+                                            >
+                                                {f.name}
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
                         {selectedFacility && (
                             <Form.Text className="text-muted">
                                 {selectedFacility.location} | 최대 {selectedFacility.capacity}명 |&nbsp;
