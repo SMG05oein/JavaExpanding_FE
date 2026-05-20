@@ -29,6 +29,7 @@ const useReservationApi = () => {
                 pageContent.map(async (facility) => {
                     let open_time = '09:00';
                     let close_time = '22:00';
+                    let facility_times = [];
                     try {
                         const token = localStorage.getItem('token');
                         const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -40,10 +41,16 @@ const useReservationApi = () => {
                             return `${hour}:${minute}`;
                         };
 
-                        const timeRes = await axios.get(`${baseURL}/api/facility-time/list/${facility.facIdx}`, { headers });
+                        const timeRes = await axios.get(`${baseURL}/api/facility-time/admin/list/${facility.facIdx}`, { headers });
                         
                         if (Array.isArray(timeRes.data) && timeRes.data.length > 0) {
-                            const activeTime = timeRes.data.find((d) => d.facTimeStatus === 'OPEN') || timeRes.data[0];
+                            facility_times = timeRes.data.map(d => ({
+                                day: d.facDay,
+                                open: formatTime(d.facOpen),
+                                close: formatTime(d.facClose),
+                                status: d.facTimeStatus
+                            }));
+                            const activeTime = timeRes.data.find((d) => d.facTimeStatus === '운영중') || timeRes.data[0];
                             if (activeTime.facOpen) open_time = formatTime(activeTime.facOpen);
                             if (activeTime.facClose) close_time = formatTime(activeTime.facClose);
                         }
@@ -61,6 +68,7 @@ const useReservationApi = () => {
                         requires_approval: true,
                         open_time,
                         close_time,
+                        facility_times,
                         created_by: 'admin',
                     };
                 })
@@ -108,6 +116,7 @@ const useReservationApi = () => {
                 purpose: res.resPurpose,
                 status: res.resStatus || '대기',
                 headcount: res.resHeadcount,
+                reject_reason: res.rejectReason || '',
                 created_at: res.resCreateDt || new Date().toISOString(),
                 updated_at: res.resUpdateDt || new Date().toISOString(),
             }));
@@ -231,6 +240,7 @@ const useReservationApi = () => {
                 mapped.map(async (fac) => {
                     let open_time = '09:00';
                     let close_time = '22:00';
+                    let facility_times = [];
                     try {
                         const token = localStorage.getItem('token');
                         const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -242,14 +252,20 @@ const useReservationApi = () => {
                             return `${hour}:${minute}`;
                         };
                         const timeIdx = fac.id.replace('fac-', '');
-                        const timeRes = await axios.get(`${baseURL}/api/facility-time/list/${timeIdx}`, { headers });
+                        const timeRes = await axios.get(`${baseURL}/api/facility-time/admin/list/${timeIdx}`, { headers });
                         if (Array.isArray(timeRes.data) && timeRes.data.length > 0) {
-                            const activeTime = timeRes.data.find((d) => d.facTimeStatus === 'OPEN') || timeRes.data[0];
+                            facility_times = timeRes.data.map(d => ({
+                                day: d.facDay,
+                                open: formatTime(d.facOpen),
+                                close: formatTime(d.facClose),
+                                status: d.facTimeStatus
+                            }));
+                            const activeTime = timeRes.data.find((d) => d.facTimeStatus === '운영중') || timeRes.data[0];
                             if (activeTime.facOpen) open_time = formatTime(activeTime.facOpen);
                             if (activeTime.facClose) close_time = formatTime(activeTime.facClose);
                         }
                     } catch (e) {}
-                    return { ...fac, open_time, close_time };
+                    return { ...fac, open_time, close_time, facility_times };
                 })
             );
 

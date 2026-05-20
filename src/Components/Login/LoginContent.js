@@ -30,8 +30,8 @@ const LoginContent = () => {
             } else {
                 endpoint = '/api/admin/login'; // 관리자 로그인 API
                 requestData = {
-                    adminIdorEmail: id,
-                    adminPw: pw
+                    userIdorEmail: id,
+                    userPw: pw
                 };
             }
 
@@ -41,7 +41,8 @@ const LoginContent = () => {
             login(result);
 
             console.log(`${role} 로그인 성공:`, result);
-            navigate('/');
+            // 관리자는 어드민 대시보드로, 학생은 메인으로 이동
+            navigate(role === 'ADMIN' ? '/admin' : '/');
         } catch (err) {
             console.error(err);
             alert('로그인에 실패했습니다. 아이디와 비밀번호를 확인하세요.');

@@ -163,6 +163,11 @@ const MyReservations = ({ userId }) => {
                                         {res.reservation_date} | {res.start_time} ~ {res.end_time} | {res.headcount}명
                                     </div>
                                     <div className="res-purpose">{res.purpose}</div>
+                                    {res.status === '거절' && res.reject_reason && (
+                                        <div className="res-reject-reason text-danger" style={{ fontSize: '0.85rem', marginTop: '4px' }}>
+                                            <strong>반려 사유:</strong> {res.reject_reason}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="res-actions d-flex gap-2 align-items-center">

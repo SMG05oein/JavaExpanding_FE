@@ -34,3 +34,35 @@ code {
     monospace;
 }
 
+/* --- 운영시간 보기 팝업 토글 버튼 --- */
+.hours-toggle-btn {
+  cursor: pointer;
+  color: #003a78; /* 백석대 블루 계열 */
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.hours-toggle-btn:hover {
+  color: #002a56;
+  opacity: 0.8;
+}
+
+/* --- 팝업(Popover) 커스텀 --- */
+.popover {
+  border: 1px solid #dee2e6 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 12px !important;
+  max-width: 280px !important;
+}
+
+.popover-header {
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6 !important;
+  color: #212529 !important;
+  border-top-left-radius: calc(12px - 1px) !important;
+  border-top-right-radius: calc(12px - 1px) !important;
+}
+

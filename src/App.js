@@ -12,6 +12,14 @@ import ReservePage from "./Pages/Reserve/ReservePage";
 import MyReservationsPage from "./Pages/MyReservations/MyReservationsPage";
 import useLoginStatus from "./Hooks/Status/useLoginStatus";
 
+// 관리자 페이지
+import AdminLayout      from "./Pages/Admin/AdminLayout";
+import AdminDashboard   from "./Pages/Admin/AdminDashboard";
+import AdminReservations from "./Pages/Admin/AdminReservations";
+import AdminApprovals   from "./Pages/Admin/AdminApprovals";
+import AdminFacilities  from "./Pages/Admin/AdminFacilities";
+import AdminFacilityTimes from "./Pages/Admin/AdminFacilityTimes";
+
 function App() {
     const { isLoggedIn, fetchUser } = useLoginStatus();
 
@@ -24,6 +32,7 @@ function App() {
 
     return (
         <Routes>
+            {/* ── 일반 사용자 (GNB 포함) ── */}
             <Route path="/" element={<GNB />}>
                 <Route index element={<MainPage />} />
                 <Route path="/signup" element={<Signup />} />
@@ -33,8 +42,18 @@ function App() {
                 <Route path="/my-reservations" element={<MyReservationsPage />} />
                 <Route path="/mypage" element={<MyPage />} />
             </Route>
+
+            {/* ── 관리자 (사이드바 레이아웃, GNB 없음) ── */}
+            <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="reservations" element={<AdminReservations />} />
+                <Route path="approvals"    element={<AdminApprovals />} />
+                <Route path="facilities"   element={<AdminFacilities />} />
+                <Route path="facilities/:facIdx/times" element={<AdminFacilityTimes />} />
+            </Route>
         </Routes>
     );
 }
 
 export default App;
+

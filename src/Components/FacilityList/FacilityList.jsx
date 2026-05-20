@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Badge } from 'react-bootstrap';
+import { Badge, OverlayTrigger, Popover } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
 import useReservationApi from '../../Hooks/Api/useReservationApi';
 import useLoginStatus from '../../Hooks/Status/useLoginStatus';
@@ -10,6 +10,9 @@ const STATUS_MAP = {
     UNAVAILABLE: { label: '사용 불가', variant: 'danger' },
     MAINTENANCE: { label: '점검 중', variant: 'warning' },
 };
+
+// 💡 요일 순서 고정 배열
+const DAYS_OF_WEEK = ['월', '화', '수', '목', '금', '토', '일'];
 
 const FacilityList = ({ onReserve }) => {
     const facilities = useReservationStore((s) => s.facilities);
@@ -76,6 +79,32 @@ const FacilityList = ({ onReserve }) => {
                     };
                     const isAvailable = facility.status === 'AVAILABLE';
 
+                    // 💡 요일별 데이터 매칭 팝업
+                    const popover = (
+                        <Popover id={`popover-list-${facility.id}`}>
+                            <Popover.Header as="h3" className="font-size-sm fw-bold">운영 시간 안내</Popover.Header>
+                            <Popover.Body className="p-2">
+                                <ul className="list-unstyled mb-0 font-size-sm">
+                                    {DAYS_OF_WEEK.map((dayLabel) => {
+                                        // 해당 요일의 데이터가 있는지 찾기
+                                        const timeInfo = facility.facility_times?.find(t => t.day === dayLabel);
+
+                                        return (
+                                            <li key={dayLabel} className="mb-1">
+                                                <strong>{dayLabel}요일:</strong>{' '}
+                                                {timeInfo ? (
+                                                    <span>{timeInfo.open} ~ {timeInfo.close} <span className="text-muted">({timeInfo.status})</span></span>
+                                                ) : (
+                                                    <span className="text-danger">운영시간 미등록</span>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </Popover.Body>
+                        </Popover>
+                    );
+
                     return (
                         <div key={facility.id} className="facility-card">
                             <div className="facility-header">
@@ -86,8 +115,11 @@ const FacilityList = ({ onReserve }) => {
                             <div className="facility-meta">
                                 <span>위치 {facility.location}</span>
                                 <span>최대 {facility.capacity}명</span>
-                                <span>
-                                    {facility.open_time} ~ {facility.close_time}
+                                <span className="d-inline-flex align-items-center">
+                                    {/* 💡 무조건 팝업 버튼 노출 */}
+                                    <OverlayTrigger trigger="click" placement="bottom" overlay={popover} rootClose>
+                                        <span className="hours-toggle-btn">운영시간 보기</span>
+                                    </OverlayTrigger>
                                 </span>
                             </div>
 

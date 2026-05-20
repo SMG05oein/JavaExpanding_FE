@@ -1,23 +1,24 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Badge, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Badge, Card, Button, OverlayTrigger, Popover } from 'react-bootstrap';
 import useLoginStatus from '../../Hooks/Status/useLoginStatus';
 import useReservationStore from '../../store/reservationStore';
 import './MainContent.style.css';
+
+// 💡 요일 순서 고정 배열
+const DAYS_OF_WEEK = ['월', '화', '수', '목', '금', '토', '일'];
 
 const MainContent = () => {
     const navigate = useNavigate();
     const { isLoggedIn } = useLoginStatus();
     const { facilities, reservations } = useReservationStore();
 
-    // 통계 산출
     const stats = {
         available: facilities.filter((f) => f.status === 'AVAILABLE').length,
         pending: reservations.filter((r) => r.status === 'PENDING' || r.status === '대기').length,
         total: facilities.length,
     };
 
-    // 상위 3개 시설물 미리보기용으로 추출
     const featuredFacilities = facilities.slice(0, 3);
 
     const handleScrollToGuide = () => {
@@ -130,6 +131,32 @@ const MainContent = () => {
                             const badgeBg = isAvailable ? 'success' : facility.status === 'MAINTENANCE' ? 'warning' : 'danger';
                             const badgeLabel = isAvailable ? '사용 가능' : facility.status === 'MAINTENANCE' ? '점검 중' : '사용 불가';
 
+                            // 💡 요일별 데이터 매칭 팝업
+                            const popover = (
+                                <Popover id={`popover-main-${facility.id}`}>
+                                    <Popover.Header as="h3" className="font-size-sm fw-bold">운영 시간 안내</Popover.Header>
+                                    <Popover.Body className="p-2">
+                                        <ul className="list-unstyled mb-0 font-size-sm">
+                                            {DAYS_OF_WEEK.map((dayLabel) => {
+                                                // 해당 요일의 데이터가 있는지 찾기
+                                                const timeInfo = facility.facility_times?.find(t => t.day === dayLabel);
+
+                                                return (
+                                                    <li key={dayLabel} className="mb-1">
+                                                        <strong>{dayLabel}요일:</strong>{' '}
+                                                        {timeInfo ? (
+                                                            <span>{timeInfo.open} ~ {timeInfo.close} <span className="text-muted">({timeInfo.status})</span></span>
+                                                        ) : (
+                                                            <span className="text-danger">운영시간 미등록</span>
+                                                        )}
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </Popover.Body>
+                                </Popover>
+                            );
+
                             return (
                                 <Col xs={12} lg={4} key={facility.id}>
                                     <Card className="facility-preview-card border-0 h-100 shadow-sm">
@@ -156,9 +183,14 @@ const MainContent = () => {
                                                     <span className="text-muted">수용 인원</span>
                                                     <strong>최대 {facility.capacity}명</strong>
                                                 </div>
-                                                <div className="d-flex justify-content-between">
+                                                <div className="d-flex justify-content-between align-items-center">
                                                     <span className="text-muted">운영 시간</span>
-                                                    <strong>{facility.open_time} ~ {facility.close_time}</strong>
+                                                    <strong className="d-inline-flex text-end">
+                                                        {/* 💡 무조건 팝업 버튼 노출 */}
+                                                        <OverlayTrigger trigger="click" placement="bottom" overlay={popover} rootClose>
+                                                            <span className="hours-toggle-btn">운영시간 보기</span>
+                                                        </OverlayTrigger>
+                                                    </strong>
                                                 </div>
                                             </div>
                                             <Button
@@ -180,6 +212,7 @@ const MainContent = () => {
 
             {/* 4. 이용 가이드 섹션 */}
             <section id="guide-section" className="guide-section py-5 bg-white">
+                {/* ... (생략 없이 원본 유지) ... */}
                 <Container>
                     <div className="section-header text-center mb-5">
                         <h2 className="section-title">쉽고 편리한 이용 방법</h2>
@@ -213,9 +246,9 @@ const MainContent = () => {
 
             {/* 5. 공지사항 및 자주 묻는 질문 */}
             <section className="notice-faq-section py-5">
+                {/* ... (생략 없이 원본 유지) ... */}
                 <Container>
                     <Row className="g-5">
-                        {/* 공지사항 */}
                         <Col xs={12} lg={6}>
                             <div className="section-header mb-4 d-flex justify-content-between align-items-center">
                                 <h3 className="sub-section-title mb-0">공지사항</h3>
@@ -255,7 +288,6 @@ const MainContent = () => {
                             </div>
                         </Col>
 
-                        {/* FAQ/문의처 */}
                         <Col xs={12} lg={6}>
                             <div className="section-header mb-4">
                                 <h3 className="sub-section-title">신속 고객 지원 및 문의</h3>
