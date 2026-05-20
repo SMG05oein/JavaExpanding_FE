@@ -13,11 +13,77 @@ const SignUpContent = () => {
     const [confirmPw, setConfirmPw] = useState(''); // 비밀번호 확인
     const [role, setRole] = useState('STUDENT');    // STUDENT 또는 ADMIN
 
+    const [isEmailSent, setIsEmailSent] = useState(false);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const [verifyCodeInput, setVerifyCodeInput] = useState('');
+    const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+    const [isEmailVerified, setIsEmailVerified] = useState(false);
+
     const navigate = useNavigate();
     const { fetchData } = useApi();
 
+    const handleSendEmail = async () => {
+        if (!email) {
+            alert('이메일을 입력해 주세요.');
+            return;
+        }
+        if (!email.endsWith('@bu.ac.kr')) {
+            alert('백석대학교 이메일(@bu.ac.kr)만 사용 가능합니다.');
+            return;
+        }
+
+        setIsSendingEmail(true);
+        try {
+            const endpoint = `/api/public_auh/send_email?email=${encodeURIComponent(email)}`;
+            const response = await fetchData(endpoint, 'POST');
+            if (response && response.status === 200) {
+                alert('인증 코드가 이메일로 전송되었습니다. 이메일을 확인해 주세요.');
+                setIsEmailSent(true);
+            } else {
+                alert('인증 코드 발송에 실패했습니다.');
+            }
+        } catch (err) {
+            console.error("이메일 발송 에러:", err);
+            const errorMsg = err.response?.data || '인증 코드 발송에 실패했습니다.';
+            alert(errorMsg);
+        } finally {
+            setIsSendingEmail(false);
+        }
+    };
+
+    const handleVerifyCode = async () => {
+        if (!verifyCodeInput) {
+            alert('인증번호를 입력해 주세요.');
+            return;
+        }
+
+        setIsVerifyingCode(true);
+        try {
+            const endpoint = `/api/public_auh/verify_code?email=${encodeURIComponent(email)}&code=${encodeURIComponent(verifyCodeInput)}`;
+            const response = await fetchData(endpoint, 'POST');
+            if (response && response.status === 200) {
+                alert('이메일 인증이 완료되었습니다.');
+                setIsEmailVerified(true);
+            } else {
+                alert('인증에 실패했습니다. 인증번호를 확인해 주세요.');
+            }
+        } catch (err) {
+            console.error("이메일 인증 에러:", err);
+            const errorMsg = err.response?.data || '인증에 실패했습니다. 인증번호를 확인해 주세요.';
+            alert(errorMsg);
+        } finally {
+            setIsVerifyingCode(false);
+        }
+    };
+
     const handleSignUp = async (e) => {
         e.preventDefault();
+
+        // 0. 이메일 인증 여부 확인
+        if (!isEmailVerified) {
+            alert('이메일 인증을 완료해 주세요.');
+            return;
+        }
 
         // 1. 비밀번호 일치 확인
         if (pw !== confirmPw) {
@@ -119,14 +185,54 @@ const SignUpContent = () => {
                 {/* 이메일 입력 */}
                 <Form.Group className="mb-3" controlId="formEmail">
                     <Form.Label>이메일</Form.Label>
-                    <Form.Control
-                        type="email"
-                        placeholder="example@bu.ac.kr"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
+                    <div className="d-flex gap-2">
+                        <Form.Control
+                            type="email"
+                            placeholder="example@bu.ac.kr"
+                            value={email}
+                            onChange={(e) => {
+                                setEmail(e.target.value);
+                                setIsEmailVerified(false);
+                            }}
+                            disabled={isEmailVerified}
+                            required
+                        />
+                        <Button
+                            type="button"
+                            variant={isEmailVerified ? "success" : "outline-primary"}
+                            onClick={handleSendEmail}
+                            disabled={isEmailVerified || isSendingEmail || !email}
+                            style={{ minWidth: '100px' }}
+                        >
+                            {isSendingEmail ? '발송중...' : isEmailVerified ? '인증됨' : '인증요청'}
+                        </Button>
+                    </div>
                 </Form.Group>
+
+                {/* 이메일 인증코드 입력 */}
+                {isEmailSent && !isEmailVerified && (
+                    <Form.Group className="mb-3" controlId="formVerifyCode">
+                        <Form.Label>인증번호</Form.Label>
+                        <div className="d-flex gap-2">
+                            <Form.Control
+                                type="text"
+                                placeholder="인증번호 6자리 입력"
+                                value={verifyCodeInput}
+                                onChange={(e) => setVerifyCodeInput(e.target.value)}
+                                required
+                            />
+                            <Button
+                                type="button"
+                                variant="primary"
+                                onClick={handleVerifyCode}
+                                disabled={isVerifyingCode || !verifyCodeInput}
+                                style={{ minWidth: '100px' }}
+                            >
+                                {isVerifyingCode ? '확인중...' : '인증확인'}
+                            </Button>
+                        </div>
+                    </Form.Group>
+                )}
 
                 {/* 비밀번호 입력 */}
                 <Form.Group className="mb-3" controlId="formPassword">
