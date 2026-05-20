@@ -1,25 +1,74 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react'; // useState, useEffect 추가
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Badge, Card, Button, OverlayTrigger, Popover } from 'react-bootstrap';
 import useLoginStatus from '../../Hooks/Status/useLoginStatus';
-import useReservationStore from '../../store/reservationStore';
+// useApi 훅 임포트 추가 (경로는 프로젝트 구조에 맞게 확인하세요)
+import useApi from '../../Hooks/Api/useApi';
 import './MainContent.style.css';
 
-// 💡 요일 순서 고정 배열
 const DAYS_OF_WEEK = ['월', '화', '수', '목', '금', '토', '일'];
 
 const MainContent = () => {
     const navigate = useNavigate();
     const { isLoggedIn } = useLoginStatus();
-    const { facilities, reservations } = useReservationStore();
+    const { fetchData } = useApi(); // 여기서 에러가 났을 확률이 높습니다. 임포트 필수!
 
-    const stats = {
-        available: facilities.filter((f) => f.status === 'AVAILABLE').length,
-        pending: reservations.filter((r) => r.status === 'PENDING' || r.status === '대기').length,
-        total: facilities.length,
-    };
+    // 직접 API를 호출하여 상태 관리
+    const [stats, setStats] = useState({ available: 0, pending: 0, total: 0 });
+    const [featuredFacilities, setFeaturedFacilities] = useState([]);
 
-    const featuredFacilities = facilities.slice(0, 3);
+    useEffect(() => {
+        const initData = async () => {
+            try {
+                // 1. 시설 목록(1페이지) 호출
+                const result1 = await fetchData('/api/facility/list?page=0', 'GET');
+
+                if (result1) {
+                    // 방어 코드: result에 직접 있거나, result.data 안에 있을 경우를 모두 대비
+                    const content = result1.content || result1.data?.content || [];
+                    const totalElements = result1.totalElements || result1.data?.totalElements || 0;
+
+                    setStats({
+                        available: totalElements, // 임시: 전체 개수로 지정
+                        pending: 0, // 예약 연동 후 수정
+                        total: totalElements // 정확히 14가 출력됩니다!
+                    });
+
+                    // 2. 상위 3개만 자르기 (content가 빈 배열일 경우 대비 안전하게 자름)
+                    const top3Facilities = content.length > 0 ? content.slice(0, 3) : [];
+
+                    // 3. 상위 3개의 운영시간 데이터 각각 호출 및 매핑
+                    const facilitiesWithTimes = await Promise.all(
+                        top3Facilities.map(async (facility) => {
+                            try {
+                                const timeResult = await fetchData(`/api/facility-time/admin/list/${facility.facIdx}`, 'GET');
+
+                                // timeResult 형태에 따라 유연하게 배열 추출
+                                const timesArray = Array.isArray(timeResult) ? timeResult
+                                    : (timeResult?.data ? timeResult.data : []);
+
+                                return {
+                                    ...facility,
+                                    facility_times: timesArray
+                                };
+                            } catch (error) {
+                                console.error(`[운영시간 에러] ${facility.facName} 데이터 로딩 실패:`, error);
+                                return { ...facility, facility_times: [] };
+                            }
+                        })
+                    );
+                    // console.log("디버깅: ",facilitiesWithTimes)
+                    // 4. 최종적으로 운영시간이 포함된 데이터를 state에 저장
+                    setFeaturedFacilities(facilitiesWithTimes);
+
+                }
+            } catch (err) {
+                console.error("메인 페이지 데이터 로딩 실패:", err);
+            }
+        };
+
+        initData();
+    }, [fetchData]);
 
     const handleScrollToGuide = () => {
         const guideSection = document.getElementById('guide-section');
@@ -46,19 +95,13 @@ const MainContent = () => {
                         )}
                     </p>
                     <div className="hero-buttons d-flex justify-content-center gap-3">
-                        <Button
-                            className="btn-primary-custom"
-                            onClick={() => navigate('/futsal')}
-                        >
+                        <Button className="btn-primary-custom" onClick={() => navigate('/futsal')}>
                             시설 예약하러 가기
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="ms-2" viewBox="0 0 16 16">
                                 <path fillRule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z" />
                             </svg>
                         </Button>
-                        <Button
-                            className="btn-outline-custom"
-                            onClick={handleScrollToGuide}
-                        >
+                        <Button className="btn-outline-custom" onClick={handleScrollToGuide}>
                             이용 방법 가이드
                         </Button>
                     </div>
@@ -127,25 +170,21 @@ const MainContent = () => {
 
                     <Row className="g-4">
                         {featuredFacilities.map((facility) => {
-                            const isAvailable = facility.status === 'AVAILABLE';
-                            const badgeBg = isAvailable ? 'success' : facility.status === 'MAINTENANCE' ? 'warning' : 'danger';
-                            const badgeLabel = isAvailable ? '사용 가능' : facility.status === 'MAINTENANCE' ? '점검 중' : '사용 불가';
+                            const badgeBg = 'success';
+                            const badgeLabel = '사용 가능';
 
-                            // 💡 요일별 데이터 매칭 팝업
                             const popover = (
-                                <Popover id={`popover-main-${facility.id}`}>
+                                <Popover id={`popover-main-${facility.facIdx}`}>
                                     <Popover.Header as="h3" className="font-size-sm fw-bold">운영 시간 안내</Popover.Header>
                                     <Popover.Body className="p-2">
                                         <ul className="list-unstyled mb-0 font-size-sm">
                                             {DAYS_OF_WEEK.map((dayLabel) => {
-                                                // 해당 요일의 데이터가 있는지 찾기
-                                                const timeInfo = facility.facility_times?.find(t => t.day === dayLabel);
-
+                                                const timeInfo = facility.facility_times?.find(t => t.facDay === dayLabel);
                                                 return (
                                                     <li key={dayLabel} className="mb-1">
                                                         <strong>{dayLabel}요일:</strong>{' '}
                                                         {timeInfo ? (
-                                                            <span>{timeInfo.open} ~ {timeInfo.close} <span className="text-muted">({timeInfo.status})</span></span>
+                                                            <span>{timeInfo.facOpen} ~ {timeInfo.facClose} <span className="text-muted">({timeInfo.facTimeStatus})</span></span>
                                                         ) : (
                                                             <span className="text-danger">운영시간 미등록</span>
                                                         )}
@@ -158,7 +197,7 @@ const MainContent = () => {
                             );
 
                             return (
-                                <Col xs={12} lg={4} key={facility.id}>
+                                <Col xs={12} lg={4} key={facility.facIdx}>
                                     <Card className="facility-preview-card border-0 h-100 shadow-sm">
                                         <Card.Body className="d-flex flex-column p-4">
                                             <div className="d-flex justify-content-between align-items-center mb-3">
@@ -169,37 +208,27 @@ const MainContent = () => {
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" className="me-1 align-text-top" viewBox="0 0 16 16">
                                                         <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" />
                                                     </svg>
-                                                    {facility.location}
+                                                    {facility.facLocation || '위치 미상'}
                                                 </span>
                                             </div>
                                             <Card.Title className="facility-name-title mb-2 font-weight-bold">
-                                                {facility.name}
+                                                {facility.facName}
                                             </Card.Title>
                                             <Card.Text className="facility-description-text text-muted mb-4 flex-grow-1">
-                                                {facility.description || '이 시설물에 대한 세부 설명이 등록되어 있지 않습니다.'}
+                                                {facility.facDescription || '이 시설물에 대한 세부 설명이 등록되어 있지 않습니다.'}
                                             </Card.Text>
                                             <div className="facility-specs mb-4 p-3 bg-light rounded-3 font-size-sm">
-                                                <div className="d-flex justify-content-between mb-1">
-                                                    <span className="text-muted">수용 인원</span>
-                                                    <strong>최대 {facility.capacity}명</strong>
-                                                </div>
                                                 <div className="d-flex justify-content-between align-items-center">
                                                     <span className="text-muted">운영 시간</span>
                                                     <strong className="d-inline-flex text-end">
-                                                        {/* 💡 무조건 팝업 버튼 노출 */}
                                                         <OverlayTrigger trigger="click" placement="bottom" overlay={popover} rootClose>
                                                             <span className="hours-toggle-btn">운영시간 보기</span>
                                                         </OverlayTrigger>
                                                     </strong>
                                                 </div>
                                             </div>
-                                            <Button
-                                                variant={isAvailable ? 'primary' : 'secondary'}
-                                                className={`w-100 py-2 border-0 btn-card ${!isAvailable ? 'disabled' : ''}`}
-                                                disabled={!isAvailable}
-                                                onClick={() => navigate('/futsal')}
-                                            >
-                                                {isAvailable ? '지금 예약 신청하기' : '예약 불가'}
+                                            <Button variant="primary" className="w-100 py-2 border-0 btn-card" onClick={() => navigate('/futsal')}>
+                                                지금 예약 신청하기
                                             </Button>
                                         </Card.Body>
                                     </Card>
@@ -212,7 +241,6 @@ const MainContent = () => {
 
             {/* 4. 이용 가이드 섹션 */}
             <section id="guide-section" className="guide-section py-5 bg-white">
-                {/* ... (생략 없이 원본 유지) ... */}
                 <Container>
                     <div className="section-header text-center mb-5">
                         <h2 className="section-title">쉽고 편리한 이용 방법</h2>
@@ -246,7 +274,6 @@ const MainContent = () => {
 
             {/* 5. 공지사항 및 자주 묻는 질문 */}
             <section className="notice-faq-section py-5">
-                {/* ... (생략 없이 원본 유지) ... */}
                 <Container>
                     <Row className="g-5">
                         <Col xs={12} lg={6}>
