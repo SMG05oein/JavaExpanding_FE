@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Badge } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
+import useReservationApi from '../../Hooks/Api/useReservationApi';
+import useLoginStatus from '../../Hooks/Status/useLoginStatus';
 import './FacilityList.style.css';
 
 const STATUS_MAP = {
@@ -14,7 +16,8 @@ const FacilityList = ({ onReserve }) => {
     const reservations = useReservationStore((s) => s.reservations);
     const isFacilitiesLoading = useReservationStore((s) => s.isFacilitiesLoading);
     const facilitiesError = useReservationStore((s) => s.facilitiesError);
-    const loadFacilities = useReservationStore((s) => s.loadFacilities);
+    const { loadFacilities, loadMyReservations } = useReservationApi();
+    const { isLoggedIn } = useLoginStatus();
 
     const [page, setPage] = useState(1);
     const pageSize = 5;
@@ -22,7 +25,10 @@ const FacilityList = ({ onReserve }) => {
 
     useEffect(() => {
         loadFacilities();
-    }, [loadFacilities]);
+        if (isLoggedIn) {
+            loadMyReservations();
+        }
+    }, [loadFacilities, loadMyReservations, isLoggedIn]);
 
     useEffect(() => {
         if (totalPages > 0 && page > totalPages) {
@@ -32,7 +38,7 @@ const FacilityList = ({ onReserve }) => {
 
     const stats = {
         available: facilities.filter((f) => f.status === 'AVAILABLE').length,
-        pending: reservations.filter((r) => r.status === 'PENDING').length,
+        pending: reservations.filter((r) => r.status === 'PENDING' || r.status === '대기').length,
         total: facilities.length,
     };
 

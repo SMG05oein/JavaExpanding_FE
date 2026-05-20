@@ -3,13 +3,15 @@ import { Container, Row, Col, Card, Badge, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import useLoginStatus from '../../Hooks/Status/useLoginStatus';
 import useReservationStore from '../../store/reservationStore';
+import useReservationApi from '../../Hooks/Api/useReservationApi';
 import MyReservations from '../../Components/FacilityList/MyReservations';
 import './MyPage.style.css';
 
 const MyPage = () => {
     const navigate = useNavigate();
     const { isLoggedIn, user, fetchUser } = useLoginStatus();
-    const { reservations, loadMyReservations, loadFacilities } = useReservationStore();
+    const reservations = useReservationStore((s) => s.reservations);
+    const { loadMyReservations, loadFacilities } = useReservationApi();
 
     useEffect(() => {
         if (!isLoggedIn) {
@@ -37,9 +39,9 @@ const MyPage = () => {
     const userReservations = reservations;
     const stats = {
         total: userReservations.length,
-        pending: userReservations.filter((r) => r.status === 'PENDING').length,
-        approved: userReservations.filter((r) => r.status === 'APPROVED').length,
-        cancelled: userReservations.filter((r) => r.status === 'CANCELLED' || r.status === 'REJECTED').length,
+        pending: userReservations.filter((r) => r.status === 'PENDING' || r.status === '대기').length,
+        approved: userReservations.filter((r) => r.status === 'APPROVED' || r.status === '승인').length,
+        cancelled: userReservations.filter((r) => r.status === 'CANCELLED' || r.status === 'REJECTED' || r.status === '취소' || r.status === '거절').length,
     };
 
     return (

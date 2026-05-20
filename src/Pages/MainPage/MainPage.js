@@ -1,15 +1,20 @@
 import React, { useEffect } from 'react';
 import MainContent from '../../Components/MainPage/MainContent';
 import './MainPage.style.css';
-import useReservationStore from '../../store/reservationStore';
+import useReservationApi from '../../Hooks/Api/useReservationApi';
+import useLoginStatus from '../../Hooks/Status/useLoginStatus';
 
 const MainPage = () => {
-    const loadFacilities = useReservationStore((s) => s.loadFacilities);
+    const { loadFacilities, loadMyReservations } = useReservationApi();
+    const { isLoggedIn } = useLoginStatus();
 
     useEffect(() => {
         // 메인 페이지 진입 시 실시간 시설 상태 정보를 새로 불러옴
         loadFacilities();
-    }, [loadFacilities]);
+        if (isLoggedIn) {
+            loadMyReservations();
+        }
+    }, [loadFacilities, loadMyReservations, isLoggedIn]);
 
     return (
         <div className="main-page-wrapper">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge, Alert } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
+import useReservationApi from '../../Hooks/Api/useReservationApi';
 import './MyReservations.style.css';
 
 const STATUS_MAP = {
@@ -13,9 +14,7 @@ const STATUS_MAP = {
 const MyReservations = ({ userId }) => {
     const getReservationsByUser = useReservationStore((s) => s.getReservationsByUser);
     const getFacilityById = useReservationStore((s) => s.getFacilityById);
-    const cancelReservation = useReservationStore((s) => s.cancelReservation);
-    const loadMyReservations = useReservationStore((s) => s.loadMyReservations);
-    const loadFacilities = useReservationStore((s) => s.loadFacilities);
+    const { cancelReservation, loadMyReservations, loadFacilities } = useReservationApi();
 
     const [alert, setAlert] = useState(null);
 

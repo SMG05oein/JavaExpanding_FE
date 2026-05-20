@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Alert, Row, Col } from 'react-bootstrap';
 import useReservationStore from '../../store/reservationStore';
+import useReservationApi from '../../Hooks/Api/useReservationApi';
 import './ReservationForm.style.css';
 
 const ReservationForm = ({ preSelectedFacilityId = '' }) => {
     const getAvailableFacilities = useReservationStore((s) => s.getAvailableFacilities);
     const getFacilityById = useReservationStore((s) => s.getFacilityById);
-    const createReservation = useReservationStore((s) => s.createReservation);
+    const { createReservation } = useReservationApi();
 
     const [form, setForm] = useState({
         facilityId: preSelectedFacilityId,

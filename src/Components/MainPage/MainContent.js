@@ -13,7 +13,7 @@ const MainContent = () => {
     // 통계 산출
     const stats = {
         available: facilities.filter((f) => f.status === 'AVAILABLE').length,
-        pending: reservations.filter((r) => r.status === 'PENDING').length,
+        pending: reservations.filter((r) => r.status === 'PENDING' || r.status === '대기').length,
         total: facilities.length,
     };
 
