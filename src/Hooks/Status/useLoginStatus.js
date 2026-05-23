@@ -16,7 +16,7 @@ const useLoginStatus = create(
                     if (typeof data === 'string') {
                         token = data;
                     } else if (data && typeof data === 'object') {
-                        token = data.accessToken || data.token || data.jwt || data.authorization;
+                        token = data.accessToken || data.token || data.jwt || data.authorization || (Object.values(data).find(v => typeof v === 'string' && v.length > 20));
                     }
                 }
 
@@ -24,8 +24,7 @@ const useLoginStatus = create(
                     localStorage.setItem('token', token);
                     set({ isLoggedIn: true });
                 } else {
-                    console.error('유효한 토큰 문자열을 찾을 수 없습니다:', result);
-                    set({ isLoggedIn: true });
+                    console.error('유효한 토큰 문자열을 찾을 수 없습니다. 결과 객체:', result);
                 }
             },
 
@@ -55,7 +54,7 @@ const useLoginStatus = create(
                             'Accept': '*/*'
                         }
                     });
-                    
+
                     if (response?.data) {
                         const userData = response.data;
                         const userObj = {

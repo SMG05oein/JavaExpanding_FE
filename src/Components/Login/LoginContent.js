@@ -24,13 +24,13 @@ const LoginContent = () => {
             if (role === 'STUDENT') {
                 endpoint = '/api/auth/login'; // 학생 로그인 API
                 requestData = {
-                    userEmailorId: id, // 명세에 따라 userEmail 혹은 userId로 수정 가능
+                    userEmailOrId: id, // 명세에 따라 userEmail 혹은 userId로 수정 가능
                     userPw: pw
                 };
             } else {
                 endpoint = '/api/admin/login'; // 관리자 로그인 API
                 requestData = {
-                    userIdorEmail: id,
+                    adminIdentifier: id,
                     userPw: pw
                 };
             }
