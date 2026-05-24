@@ -22,7 +22,7 @@ const GNB = () => {
                 <Row className="align-items-center gnb-row">
                     {/* 좌측: 로고 (Col 6만큼 차지) */}
                     <Col xs={6}>
-                        <div className="gnb-left d-flex align-items-center gap-2" style={{cursor: "pointer"}} onClick={() => window.location.href = '/'}>
+                        <div className="gnb-left d-flex align-items-center gap-2" style={{cursor: "pointer"}} onClick={() => navigate('/')}>
                             <img
                                 src="/Mp7qkImU.ico"
                                 alt="백석대 로고"

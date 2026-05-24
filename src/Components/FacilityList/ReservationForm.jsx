@@ -7,14 +7,13 @@ import './ReservationForm.style.css';
 const ReservationForm = ({ preSelectedFacilityId = '' }) => {
     const allFacilities = useReservationStore((s) => s.allFacilities);
     const { loadAllFacilities, createReservation } = useReservationApi();
-
     const [form, setForm] = useState({
         facilityId: preSelectedFacilityId,
-        date: '',
-        startTime: '',
-        endTime: '',
+        date: new Date().toISOString().slice(0, 10),
+        startTime: '09:00',
+        endTime: '18:00',
         purpose: '',
-        headcount: 6,
+        headcount: 0,
     });
     const [alert, setAlert] = useState(null); // { type: 'success'|'danger', message }
     const [searchTerm, setSearchTerm] = useState('');
@@ -28,7 +27,10 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
 
     useEffect(() => {
         if (preSelectedFacilityId) {
-            setForm((prev) => ({ ...prev, facilityId: preSelectedFacilityId }));
+            const formattedId = preSelectedFacilityId.toString().startsWith('fac-')
+                ? preSelectedFacilityId
+                : `fac-${preSelectedFacilityId}`;
+            setForm((prev) => ({ ...prev, facilityId: formattedId }));
         }
     }, [preSelectedFacilityId]);
 
@@ -97,7 +99,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
         setAlert({ type: result.success ? 'success' : 'danger', message: result.message });
 
         if (result.success) {
-            setForm({ facilityId: '', date: '', startTime: '', endTime: '', purpose: '', headcount: 6 });
+            setForm({ facilityId: '', date: new Date().toISOString().slice(0, 10), startTime: '09:00', endTime: '18:00', purpose: '', headcount: 0 });
             setSearchTerm('');
         }
     };
@@ -134,8 +136,8 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                                 }}
                             />
                             {isOpen && (
-                                <div className="dropdown-menu show w-100" style={{ 
-                                    maxHeight: '200px', 
+                                <div className="dropdown-menu show w-100" style={{
+                                    maxHeight: '200px',
                                     overflowY: 'auto',
                                     boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                                 }}>
@@ -159,13 +161,13 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                                 </div>
                             )}
                         </div>
-                        {selectedFacility && (
-                            <Form.Text className="text-muted">
-                                {selectedFacility.location} | 최대 {selectedFacility.capacity}명 |&nbsp;
-                                {selectedFacility.open_time} ~ {selectedFacility.close_time}
-                                {selectedFacility.requires_approval && ' | 관리자 승인 필요'}
-                            </Form.Text>
-                        )}
+                        {/*{selectedFacility && (*/}
+                        {/*    <Form.Text className="text-muted">*/}
+                        {/*        {selectedFacility.location} | 최대 {selectedFacility.capacity}명 |&nbsp;*/}
+                        {/*        {selectedFacility.open_time} ~ {selectedFacility.close_time}*/}
+                        {/*        {selectedFacility.requires_approval && ' | 관리자 승인 필요'}*/}
+                        {/*    </Form.Text>*/}
+                        {/*)}*/}
                     </Form.Group>
 
                     {/* 날짜 */}
@@ -228,7 +230,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                             name="headcount"
                             value={form.headcount}
                             min={1}
-                            max={selectedFacility?.capacity ?? 20}
+                            max={99}
                             onChange={handleChange}
                         />
                     </Form.Group>
