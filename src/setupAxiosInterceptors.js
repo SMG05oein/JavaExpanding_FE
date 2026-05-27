@@ -1,5 +1,6 @@
 import axios from 'axios';
 import useLoginStatus from './Hooks/Status/useLoginStatus';
+import useLoadingStore from './store/loadingStore';
 
 let isRefreshing = false;
 let failedQueue = [];
@@ -24,9 +25,10 @@ const handleLogout = () => {
 };
 
 const setupAxiosInterceptors = () => {
-    // 1. 요청 인터셉터: 토큰 주입
+    // 1. 요청 인터셉터: 토큰 주입 및 로딩 시작
     axios.interceptors.request.use(
         (config) => {
+            useLoadingStore.getState().startLoading();
             const token = localStorage.getItem('token');
             const url = config.url || '';
             const isPublicEndpoint = 
@@ -39,13 +41,20 @@ const setupAxiosInterceptors = () => {
             }
             return config;
         },
-        (error) => Promise.reject(error)
+        (error) => {
+            useLoadingStore.getState().stopLoading();
+            return Promise.reject(error);
+        }
     );
 
-    // 2. 응답 인터셉터: 401 처리 및 리프레시
+    // 2. 응답 인터셉터: 401 처리 및 리프레시 및 로딩 종료
     axios.interceptors.response.use(
-        (response) => response,
+        (response) => {
+            useLoadingStore.getState().stopLoading();
+            return response;
+        },
         async (error) => {
+            useLoadingStore.getState().stopLoading();
             const originalRequest = error.config;
 
             if (

@@ -317,13 +317,27 @@ const useReservationApi = () => {
         }
     }, [baseURL, loadMyReservations]);
 
+    // 7. 특정 시설물의 월간 예약 현황 조회
+    const loadFacilityCalendar = useCallback(async (facIdx, year, month) => {
+        try {
+            const response = await axios.get(`${baseURL}/api/reservation/facility/${facIdx}/calendar?year=${year}&month=${month}`, {
+                headers: { Accept: '*/*' }
+            });
+            return response.data || [];
+        } catch (error) {
+            console.error('시설물 캘린더 조회 실패:', error);
+            return [];
+        }
+    }, [baseURL]);
+
     return {
         loadFacilities,
         loadMyReservations,
         createReservation,
         cancelReservation,
         loadAllFacilities,
-        updateReservation
+        updateReservation,
+        loadFacilityCalendar
     };
 };
 

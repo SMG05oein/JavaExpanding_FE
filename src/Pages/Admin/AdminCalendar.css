@@ -1,0 +1,234 @@
+/* ── 관리자 캘린더 그리드 레이아웃 ── */
+.admin-calendar-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+@media (min-width: 1200px) {
+    .admin-calendar-container {
+        grid-template-columns: 3fr 2fr;
+        align-items: start;
+    }
+}
+
+/* ── 시설 선택 드롭다운 ── */
+.admin-select-wrapper {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-select {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: #374151;
+    min-width: 240px;
+    outline: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
+}
+
+.admin-select:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ── 달력 영역 ── */
+.admin-calendar-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.admin-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    text-align: center;
+}
+
+.admin-calendar-cell {
+    position: relative;
+    min-height: 80px;
+    padding: 6px;
+    border: 1px solid #f3f4f6;
+    background: #ffffff;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    transition: all 0.2s;
+}
+
+.admin-calendar-cell:hover:not(.empty) {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.admin-calendar-cell.active {
+    border-color: #6366f1;
+    background-color: #f5f3ff;
+}
+
+.admin-calendar-cell.today {
+    border: 2px solid #6366f1;
+}
+
+.admin-calendar-cell.empty {
+    background: #f9fafb;
+    border-color: #f3f4f6;
+    cursor: default;
+    pointer-events: none;
+}
+
+.admin-calendar-cell .day-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: #4b5563;
+    margin-bottom: auto;
+}
+
+.admin-calendar-cell.active .day-num {
+    color: #4f46e5;
+}
+
+/* 요약 배지(Pill) */
+.admin-cell-pills {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.cell-pill {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 4px;
+    border-radius: 4px;
+    text-align: center;
+    width: 100%;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cell-pill.approved {
+    background-color: #e0f2fe;
+    color: #0369a1;
+}
+
+.cell-pill.waiting {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+/* ── 일별 상세 예약 목록 (우측 카드) ── */
+.admin-detail-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.admin-detail-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 12px;
+}
+
+.admin-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+.admin-detail-item {
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    transition: all 0.2s;
+}
+
+.admin-detail-item:hover {
+    border-color: #d1d5db;
+    background: #ffffff;
+}
+
+.admin-detail-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.admin-detail-id {
+    font-weight: 700;
+    color: #4f46e5;
+    font-size: 12px;
+}
+
+.admin-detail-info {
+    font-size: 12px;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+.admin-detail-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: flex-end;
+}
+
+/* ── 뷰 토글 탭 ── */
+.admin-view-tabs {
+    display: flex;
+    background: #f3f4f6;
+    padding: 4px;
+    border-radius: 8px;
+    width: fit-content;
+    margin-bottom: 20px;
+}
+
+.admin-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4b5563;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.admin-tab-btn.active {
+    background: #ffffff;
+    color: #111827;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 관리자 상태 필터 탭 활성화 스타일 */
+.admin-status-filters .admin-tab-btn.active {
+    background: #6366f1;
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+}

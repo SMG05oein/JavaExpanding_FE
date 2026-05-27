@@ -54,9 +54,9 @@ const MyPage = () => {
                 </div>
 
                 <Row className="g-4">
-                    {/* 좌측: 회원 프로필 카드 */}
-                    <Col xs={12} lg={4}>
-                        <Card className="profile-card border-0 shadow-sm overflow-hidden mb-4">
+                    {/* 상단 좌측: 회원 프로필 카드 */}
+                    <Col xs={12} lg={6}>
+                        <Card className="profile-card border-0 shadow-sm overflow-hidden" style={{ height: '100%' }}>
                             <div className="profile-card-header text-center py-4">
                                 <div className="profile-avatar mb-3">
                                     {user.name ? user.name[0] : 'U'}
@@ -84,9 +84,11 @@ const MyPage = () => {
                                 </div>
                             </Card.Body>
                         </Card>
+                    </Col>
 
-                        {/* 통계 요약 카드 */}
-                        <Card className="stats-summary-card border-0 shadow-sm p-4 bg-white">
+                    {/* 상단 우측: 통계 요약 카드 */}
+                    <Col xs={12} lg={6}>
+                        <Card className="stats-summary-card border-0 shadow-sm p-4 bg-white" style={{ height: '100%' }}>
                             <h5 className="section-small-title mb-4">예약 요약</h5>
                             <Row className="g-3 text-center">
                                 <Col xs={6}>
@@ -117,8 +119,8 @@ const MyPage = () => {
                         </Card>
                     </Col>
 
-                    {/* 우측: 내 예약 리스트 */}
-                    <Col xs={12} lg={8}>
+                    {/* 하단: 내 예약 리스트 */}
+                    <Col xs={12} className="mt-4">
                         <Card className="reservations-list-card border-0 shadow-sm p-4 bg-white">
                             <h4 className="section-medium-title mb-4">내 예약 내역</h4>
                             <MyReservations userId={user.id} />

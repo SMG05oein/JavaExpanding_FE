@@ -11,6 +11,7 @@ import FacilitiesPage from "./Pages/Facilities/FacilitiesPage";
 import ReservePage from "./Pages/Reserve/ReservePage";
 import MyReservationsPage from "./Pages/MyReservations/MyReservationsPage";
 import useLoginStatus from "./Hooks/Status/useLoginStatus";
+import LoadingOverlay from "./Components/LoadingOverlay/LoadingOverlay";
 
 // 관리자 페이지
 import AdminLayout      from "./Pages/Admin/AdminLayout";
@@ -41,27 +42,30 @@ function App() {
     }, [location, fetchUser]);
 
     return (
-        <Routes>
-            {/* ── 일반 사용자 (GNB 포함) ── */}
-            <Route path="/" element={<GNB />}>
-                <Route index element={<MainPage />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/facilities" element={<FacilitiesPage />} />
-                <Route path="/reserve" element={<ReservePage />} />
-                <Route path="/my-reservations" element={<MyReservationsPage />} />
-                <Route path="/mypage" element={<MyPage />} />
-            </Route>
+        <>
+            <LoadingOverlay />
+            <Routes>
+                {/* ── 일반 사용자 (GNB 포함) ── */}
+                <Route path="/" element={<GNB />}>
+                    <Route index element={<MainPage />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/facilities" element={<FacilitiesPage />} />
+                    <Route path="/reserve" element={<ReservePage />} />
+                    <Route path="/my-reservations" element={<MyReservationsPage />} />
+                    <Route path="/mypage" element={<MyPage />} />
+                </Route>
 
-            {/* ── 관리자 (사이드바 레이아웃, GNB 없음) ── */}
-            <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="reservations" element={<AdminReservations />} />
-                <Route path="approvals"    element={<AdminApprovals />} />
-                <Route path="facilities"   element={<AdminFacilities />} />
-                <Route path="facilities/:facIdx/times" element={<AdminFacilityTimes />} />
-            </Route>
-        </Routes>
+                {/* ── 관리자 (사이드바 레이아웃, GNB 없음) ── */}
+                <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="reservations" element={<AdminReservations />} />
+                    <Route path="approvals"    element={<AdminApprovals />} />
+                    <Route path="facilities"   element={<AdminFacilities />} />
+                    <Route path="facilities/:facIdx/times" element={<AdminFacilityTimes />} />
+                </Route>
+            </Routes>
+        </>
     );
 }
 

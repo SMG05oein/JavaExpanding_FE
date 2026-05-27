@@ -82,3 +82,34 @@
     color: #adb5bd;
     font-size: 14px;
 }
+
+/* 마이페이지 예약 탭 */
+.my-res-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #f1f3f5;
+    padding-bottom: 8px;
+}
+
+.res-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #868e96;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.res-tab-btn:hover {
+    color: #495057;
+    background-color: #f8f9fa;
+}
+
+.res-tab-btn.active {
+    color: #534ab7;
+    background-color: #f1f0ff;
+}

@@ -1,30 +1,90 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Form, Button, Alert, Row, Col } from 'react-bootstrap';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import useReservationStore from '../../store/reservationStore';
 import useReservationApi from '../../Hooks/Api/useReservationApi';
 import './ReservationForm.style.css';
+import './ReservationCalendar.css';
 
 const ReservationForm = ({ preSelectedFacilityId = '' }) => {
     const allFacilities = useReservationStore((s) => s.allFacilities);
-    const { loadAllFacilities, createReservation } = useReservationApi();
+    const reservations = useReservationStore((s) => s.reservations);
+    const { loadAllFacilities, createReservation, loadFacilityCalendar, loadMyReservations, updateReservation } = useReservationApi();
+    
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const editResId = searchParams.get('edit') || '';
+    const editRes = editResId ? reservations.find(r => r.id === editResId || r.id === `res-${editResId}`) : null;
+
     const [form, setForm] = useState({
         facilityId: preSelectedFacilityId,
         date: new Date().toISOString().slice(0, 10),
         startTime: '09:00',
-        endTime: '18:00',
+        endTime: '10:00',
         purpose: '',
-        headcount: 0,
+        headcount: 1,
     });
+    
     const [alert, setAlert] = useState(null); // { type: 'success'|'danger', message }
     const [searchTerm, setSearchTerm] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const [displayVal, setDisplayVal] = useState('');
     const dropdownRef = useRef(null);
+    
+    // 캘린더용 상태
+    const [monthlyReservations, setMonthlyReservations] = useState([]);
+    const [timeSelectStep, setTimeSelectStep] = useState(0); // 0: reset, 1: start clicked, 2: end clicked
+
+    useEffect(() => {
+        if (editRes) {
+            setTimeSelectStep(2);
+        } else {
+            setTimeSelectStep(0);
+        }
+    }, [editRes, form.date, form.facilityId]);
+    
+    // 날짜 스트링 분해 헬퍼
+    const getYearMonthDay = (dateStr) => {
+        if (!dateStr) return { year: new Date().getFullYear(), month: new Date().getMonth() + 1, day: new Date().getDate() };
+        const parts = dateStr.split('-');
+        return {
+            year: parseInt(parts[0]),
+            month: parseInt(parts[1]),
+            day: parseInt(parts[2]),
+        };
+    };
+
+    const { year: formYear, month: formMonth, day: formDay } = getYearMonthDay(form.date);
+    
+    const [calendarYear, setCalendarYear] = useState(formYear);
+    const [calendarMonth, setCalendarMonth] = useState(formMonth);
+
+
+
+    useEffect(() => {
+        if (editResId && reservations.length === 0) {
+            loadMyReservations();
+        }
+    }, [editResId, reservations, loadMyReservations]);
+
+    useEffect(() => {
+        if (editRes) {
+            setForm({
+                facilityId: editRes.facility_id,
+                date: editRes.reservation_date,
+                startTime: editRes.start_time,
+                endTime: editRes.end_time,
+                purpose: editRes.purpose || '',
+                headcount: editRes.headcount || 1,
+            });
+        }
+    }, [editRes]);
 
     useEffect(() => {
         loadAllFacilities();
     }, [loadAllFacilities]);
 
+    // preSelectedFacilityId 동기화
     useEffect(() => {
         if (preSelectedFacilityId) {
             const formattedId = preSelectedFacilityId.toString().startsWith('fac-')
@@ -34,6 +94,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
         }
     }, [preSelectedFacilityId]);
 
+    // 드롭다운 바깥 클릭 감지
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -43,6 +104,29 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // 폼 날짜가 바뀌면 달력 연/월도 자동 동기화
+    useEffect(() => {
+        const { year, month } = getYearMonthDay(form.date);
+        setCalendarYear(year);
+        setCalendarMonth(month);
+    }, [form.date]);
+
+    // 시설물, 달력 연도/월이 변경되면 해당 시설물의 캘린더 데이터 로드
+    useEffect(() => {
+        const fetchCalendar = async () => {
+            if (form.facilityId) {
+                const facIdx = parseInt(form.facilityId.replace('fac-', ''));
+                if (!isNaN(facIdx)) {
+                    const data = await loadFacilityCalendar(facIdx, calendarYear, calendarMonth);
+                    setMonthlyReservations(data);
+                }
+            } else {
+                setMonthlyReservations([]);
+            }
+        };
+        fetchCalendar();
+    }, [form.facilityId, calendarYear, calendarMonth, loadFacilityCalendar]);
 
     const filteredFacilities = allFacilities.filter((f) =>
         f.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -68,7 +152,6 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
 
         const { facilityId, date, startTime, endTime, purpose, headcount } = form;
 
-        // 필수 입력/시간 유효성 검사
         if (!facilityId || !date || !startTime || !endTime || !purpose) {
             setAlert({ type: 'danger', message: '모든 항목을 입력해 주세요.' });
             return;
@@ -87,27 +170,198 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
             }
         }
 
-        const result = await createReservation({
-            facilityId,
-            date,
-            startTime,
-            endTime,
-            purpose,
-            headcount: Number(headcount),
-        });
+        let result;
+        if (editRes) {
+            result = await updateReservation(editRes.id, {
+                facilityId,
+                date,
+                startTime,
+                endTime,
+                purpose,
+                headcount: Number(headcount),
+            });
+        } else {
+            result = await createReservation({
+                facilityId,
+                date,
+                startTime,
+                endTime,
+                purpose,
+                headcount: Number(headcount),
+            });
+        }
 
         setAlert({ type: result.success ? 'success' : 'danger', message: result.message });
 
         if (result.success) {
-            setForm({ facilityId: '', date: new Date().toISOString().slice(0, 10), startTime: '09:00', endTime: '18:00', purpose: '', headcount: 0 });
-            setSearchTerm('');
+            if (editRes) {
+                setTimeout(() => {
+                    navigate('/mypage');
+                }, 1500);
+            } else {
+                setForm({ facilityId: form.facilityId, date: form.date, startTime: '09:00', endTime: '10:00', purpose: '', headcount: 1 });
+                // 예약이 성공적으로 생성되었으므로 달력 데이터 재로드
+                const facIdx = parseInt(form.facilityId.replace('fac-', ''));
+                if (!isNaN(facIdx)) {
+                    const data = await loadFacilityCalendar(facIdx, calendarYear, calendarMonth);
+                    setMonthlyReservations(data);
+                }
+            }
         }
     };
 
+    /* ── 달력 일수 계산 ── */
+    const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
+    const getFirstDayOfMonth = (year, month) => new Date(year, month - 1, 1).getDay();
+
+    const daysInMonth = getDaysInMonth(calendarYear, calendarMonth);
+    const firstDay = getFirstDayOfMonth(calendarYear, calendarMonth);
+
+    const prevMonth = () => {
+        if (calendarMonth === 1) {
+            setCalendarYear((y) => y - 1);
+            setCalendarMonth(12);
+        } else {
+            setCalendarMonth((m) => m - 1);
+        }
+    };
+
+    const nextMonth = () => {
+        if (calendarMonth === 12) {
+            setCalendarYear((y) => y + 1);
+            setCalendarMonth(1);
+        } else {
+            setCalendarMonth((m) => m + 1);
+        }
+    };
+
+    /* ── 타임 슬롯 스케줄링 ── */
+    // 시설물 요일별 운영 가능 여부와 상태 확인
+    const getSelectedDateStatus = () => {
+        if (!selectedFacility) return { isAvailable: false, reason: '시설을 먼저 선택해 주세요.' };
+        
+        // 1. 운영 시간 등록 여부 검사
+        if (!selectedFacility.facility_times || selectedFacility.facility_times.length === 0) {
+            return { isAvailable: false, reason: '운영 시간이 등록되지 않은 시설물입니다. 예약이 불가능합니다.' };
+        }
+        
+        // 2. 선택일 요일 구하기
+        const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+        const dateObj = new Date(form.date);
+        const dayName = daysOfWeek[dateObj.getDay()]; // '월', '화', '수' 등
+        
+        // 3. 해당 요일의 운영 시간 설정 찾기
+        const dayTimeInfo = selectedFacility.facility_times.find(t => t.day === dayName);
+        if (!dayTimeInfo) {
+            return { isAvailable: false, reason: `선택하신 요일(${dayName}요일)은 운영 정보가 등록되지 않아 예약이 불가능합니다.` };
+        }
+        
+        if (dayTimeInfo.status === '예약불가' || dayTimeInfo.status === '점검중') {
+            return { isAvailable: false, reason: `선택하신 날짜는 시설 ${dayTimeInfo.status} 상태입니다. 예약이 불가능합니다.` };
+        }
+        
+        return { isAvailable: true, open: dayTimeInfo.open, close: dayTimeInfo.close };
+    };
+
+    const isDateAvailable = (dateStr) => {
+        if (!selectedFacility) return false;
+        if (!selectedFacility.facility_times || selectedFacility.facility_times.length === 0) return false;
+        
+        const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+        const dateObj = new Date(dateStr);
+        const dayName = daysOfWeek[dateObj.getDay()];
+        
+        const dayTimeInfo = selectedFacility.facility_times.find(t => t.day === dayName);
+        if (!dayTimeInfo) return false;
+        
+        return dayTimeInfo.status !== '예약불가' && dayTimeInfo.status !== '점검중';
+    };
+
+    const statusInfo = getSelectedDateStatus();
+
+    const getHourlySlots = (openTime, closeTime) => {
+        let startHour = 9;
+        let endHour = 22;
+        if (openTime) startHour = parseInt(openTime.split(':')[0]);
+        if (closeTime) endHour = parseInt(closeTime.split(':')[0]);
+        
+        const slots = [];
+        for (let h = startHour; h < endHour; h++) {
+            const timeStr = `${String(h).padStart(2, '0')}:00`;
+            const nextTimeStr = `${String(h + 1).padStart(2, '0')}:00`;
+            slots.push({ start: timeStr, end: nextTimeStr });
+        }
+        return slots;
+    };
+
+    const slots = statusInfo.isAvailable ? getHourlySlots(statusInfo.open, statusInfo.close) : [];
+    const dayReservations = monthlyReservations.filter(
+        (r) => r.resDate === form.date && r.resStatus !== '취소' && r.resStatus !== '거절'
+    );
+
+    const getSlotStatus = (slot) => {
+        const overlapping = dayReservations.find((r) => {
+            const rStart = r.resStart.slice(0, 5);
+            const rEnd = r.resEnd.slice(0, 5);
+            return rStart < slot.end && rEnd > slot.start;
+        });
+
+        if (overlapping) {
+            return {
+                status: overlapping.resStatus === '승인' ? 'approved' : 'waiting',
+                label: overlapping.resStatus === '승인' ? '예약 완료' : '대기 중',
+                purpose: overlapping.resPurpose,
+            };
+        }
+        return { status: 'available', label: '예약 가능' };
+    };
+
+    const isSlotSelected = (slot) => {
+        if (timeSelectStep === 1) {
+            return slot.start === form.startTime;
+        }
+        if (timeSelectStep === 2) {
+            return slot.start >= form.startTime && slot.end <= form.endTime;
+        }
+        return false;
+    };
+
+    const handleSlotClick = (slot, status) => {
+        if (status !== 'available') return;
+        
+        if (timeSelectStep === 0 || timeSelectStep === 2) {
+            setForm((prev) => ({
+                ...prev,
+                startTime: slot.start,
+                endTime: slot.end,
+            }));
+            setTimeSelectStep(1);
+        } else if (timeSelectStep === 1) {
+            if (slot.start > form.startTime) {
+                setForm((prev) => ({
+                    ...prev,
+                    endTime: slot.end,
+                }));
+                setTimeSelectStep(2);
+            } else {
+                setForm((prev) => ({
+                    ...prev,
+                    startTime: slot.start,
+                    endTime: slot.end,
+                }));
+                setTimeSelectStep(1);
+            }
+        }
+    };
+
+    const emptyCells = Array(firstDay).fill(null);
+    const dayCells = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
     return (
-        <div className="reservation-form-wrapper">
-            <div className="reservation-form-card">
-                <div className="form-title">예약 신청</div>
+        <div className="reservation-page-container">
+            {/* 왼쪽: 예약 신청서 폼 */}
+            <div className="reservation-card">
+                <div className="section-title">{editRes ? '✍️ 예약 정보 수정' : '✍️ 예약 신청서 작성'}</div>
 
                 {alert && (
                     <Alert variant={alert.type} onClose={() => setAlert(null)} dismissible>
@@ -118,7 +372,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                 <Form onSubmit={handleSubmit}>
                     {/* 시설 선택 */}
                     <Form.Group className="mb-3">
-                        <Form.Label>시설 선택</Form.Label>
+                        <Form.Label className="fw-semibold">시설 선택</Form.Label>
                         <div ref={dropdownRef} className="position-relative">
                             <Form.Control
                                 type="text"
@@ -139,7 +393,8 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                                 <div className="dropdown-menu show w-100" style={{
                                     maxHeight: '200px',
                                     overflowY: 'auto',
-                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+                                    zIndex: 10
                                 }}>
                                     {filteredFacilities.length === 0 ? (
                                         <div className="dropdown-item text-muted">검색 결과가 없습니다.</div>
@@ -148,7 +403,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                                             <button
                                                 key={f.id}
                                                 type="button"
-                                                className="dropdown-item text-start"
+                                                className="dropdown-item text-start py-2"
                                                 onClick={() => {
                                                     setForm((prev) => ({ ...prev, facilityId: f.id }));
                                                     setIsOpen(false);
@@ -161,18 +416,11 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                                 </div>
                             )}
                         </div>
-                        {/*{selectedFacility && (*/}
-                        {/*    <Form.Text className="text-muted">*/}
-                        {/*        {selectedFacility.location} | 최대 {selectedFacility.capacity}명 |&nbsp;*/}
-                        {/*        {selectedFacility.open_time} ~ {selectedFacility.close_time}*/}
-                        {/*        {selectedFacility.requires_approval && ' | 관리자 승인 필요'}*/}
-                        {/*    </Form.Text>*/}
-                        {/*)}*/}
                     </Form.Group>
 
                     {/* 날짜 */}
                     <Form.Group className="mb-3">
-                        <Form.Label>예약 날짜</Form.Label>
+                        <Form.Label className="fw-semibold">예약 날짜</Form.Label>
                         <Form.Control
                             type="date"
                             name="date"
@@ -186,7 +434,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                     <Row className="mb-3">
                         <Col>
                             <Form.Group>
-                                <Form.Label>시작 시간</Form.Label>
+                                <Form.Label className="fw-semibold">시작 시간</Form.Label>
                                 <Form.Control
                                     type="time"
                                     name="startTime"
@@ -198,7 +446,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                         </Col>
                         <Col>
                             <Form.Group>
-                                <Form.Label>종료 시간</Form.Label>
+                                <Form.Label className="fw-semibold">종료 시간</Form.Label>
                                 <Form.Control
                                     type="time"
                                     name="endTime"
@@ -212,7 +460,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
 
                     {/* 목적 */}
                     <Form.Group className="mb-3">
-                        <Form.Label>사용 목적</Form.Label>
+                        <Form.Label className="fw-semibold">사용 목적</Form.Label>
                         <Form.Control
                             type="text"
                             name="purpose"
@@ -224,7 +472,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
 
                     {/* 인원 */}
                     <Form.Group className="mb-4">
-                        <Form.Label>참가 인원</Form.Label>
+                        <Form.Label className="fw-semibold">참가 인원</Form.Label>
                         <Form.Control
                             type="number"
                             name="headcount"
@@ -235,10 +483,118 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                         />
                     </Form.Group>
 
-                    <Button type="submit" className="submit-btn w-100">
-                        예약 신청하기
+                    <Button type="submit" className="submit-btn w-100 py-2.5 rounded-3">
+                        {editRes ? '수정 완료' : '예약 신청하기'}
                     </Button>
                 </Form>
+            </div>
+
+            {/* 오른쪽: 실시간 예약 현황 스케줄러 */}
+            <div className="reservation-card">
+                <div className="section-title">📅 실시간 예약 현황</div>
+                {selectedFacility ? (
+                    <>
+                        <div className="calendar-wrapper">
+                            <div className="calendar-header">
+                                <h5>{calendarYear}년 {calendarMonth}월</h5>
+                                <div className="d-flex gap-1">
+                                    <button type="button" className="calendar-nav-btn" onClick={prevMonth}>&lt;</button>
+                                    <button type="button" className="calendar-nav-btn" onClick={nextMonth}>&gt;</button>
+                                </div>
+                            </div>
+                            
+                            <div className="calendar-grid">
+                                <div className="calendar-day-label">일</div>
+                                <div className="calendar-day-label">월</div>
+                                <div className="calendar-day-label">화</div>
+                                <div className="calendar-day-label">수</div>
+                                <div className="calendar-day-label">목</div>
+                                <div className="calendar-day-label">금</div>
+                                <div className="calendar-day-label">토</div>
+                                
+                                {emptyCells.map((_, i) => (
+                                    <div key={`empty-${i}`} className="calendar-cell empty" />
+                                ))}
+                                 {dayCells.map((day) => {
+                                    const isSelected = formYear === calendarYear && formMonth === calendarMonth && formDay === day;
+                                    const dateStr = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                    const dRes = monthlyReservations.filter((r) => r.resDate === dateStr && r.resStatus !== '취소' && r.resStatus !== '거절');
+                                    const hasApproved = dRes.some((r) => r.resStatus === '승인');
+                                    const hasWaiting = dRes.some((r) => r.resStatus === '대기');
+                                    const isSelectable = isDateAvailable(dateStr);
+
+                                    return (
+                                        <button
+                                            key={`day-${day}`}
+                                            type="button"
+                                            className={`calendar-cell ${isSelected ? 'active' : ''} ${!isSelectable ? 'unavailable' : ''}`}
+                                            onClick={() => {
+                                                setForm((prev) => ({ ...prev, date: dateStr }));
+                                            }}
+                                        >
+                                            {day}
+                                            <div className="dot-container">
+                                                {hasApproved && <span className="dot-badge approved" />}
+                                                {hasWaiting && <span className="dot-badge waiting" />}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="scheduler-timetable">
+                            {!statusInfo.isAvailable ? (
+                                <div className="text-center py-4 text-danger fw-semibold" style={{ fontSize: 14 }}>
+                                    ⚠️ {statusInfo.reason}
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="timetable-title">
+                                        🕒 {form.date} 시간대별 스케줄 (운영시간: {statusInfo.open} ~ {statusInfo.close})
+                                    </div>
+                                    
+                                    <div className="timetable-grid">
+                                        {slots.map((slot, idx) => {
+                                            const info = getSlotStatus(slot);
+                                            const isSelected = isSlotSelected(slot);
+                                            return (
+                                                <div
+                                                    key={`slot-${idx}`}
+                                                    className={`time-slot-block ${info.status} ${isSelected ? 'selected' : ''}`}
+                                                    onClick={() => handleSlotClick(slot, info.status)}
+                                                    title={info.purpose ? `신청 목적: ${info.purpose}` : undefined}
+                                                >
+                                                    <div>{slot.start}</div>
+                                                    <div className="time-slot-status-text">{info.label}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="timetable-legend">
+                                        <div className="legend-item">
+                                            <div className="legend-color available" />
+                                            <span>예약 가능</span>
+                                        </div>
+                                        <div className="legend-item">
+                                            <div className="legend-color waiting" />
+                                            <span>승인 대기</span>
+                                        </div>
+                                        <div className="legend-item">
+                                            <div className="legend-color approved" />
+                                            <span>예약 완료</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </>
+                ) : (
+                    <div className="text-center py-5 text-muted">
+                        <p className="mb-0">🔍 좌측에서 예약할 시설물을 먼저 선택해 주세요.</p>
+                    </div>
+                )}
             </div>
         </div>
     );
