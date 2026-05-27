@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Form, Button, Alert, Row, Col } from 'react-bootstrap';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import useReservationStore from '../../store/reservationStore';
@@ -6,7 +7,7 @@ import useReservationApi from '../../Hooks/Api/useReservationApi';
 import './ReservationForm.style.css';
 import './ReservationCalendar.css';
 
-const ReservationForm = ({ preSelectedFacilityId = '' }) => {
+    const ReservationForm = ({ preSelectedFacilityId = '' }) => {
     const allFacilities = useReservationStore((s) => s.allFacilities);
     const reservations = useReservationStore((s) => s.reservations);
     const { loadAllFacilities, createReservation, loadFacilityCalendar, loadMyReservations, updateReservation } = useReservationApi();
@@ -62,10 +63,8 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
 
 
     useEffect(() => {
-        if (editResId && reservations.length === 0) {
-            loadMyReservations();
-        }
-    }, [editResId, reservations, loadMyReservations]);
+        loadMyReservations();
+    }, [loadMyReservations]);
 
     useEffect(() => {
         if (editRes) {
@@ -138,6 +137,16 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
             setDisplayVal(selectedFacility ? selectedFacility.name : '');
         }
     }, [isOpen, selectedFacility]);
+
+    // 경고창(Alert) 발생 시 3초 뒤 자동 소멸
+    useEffect(() => {
+        if (alert) {
+            const timer = setTimeout(() => {
+                setAlert(null);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [alert]);
 
     const today = new Date().toISOString().slice(0, 10);
 
@@ -295,24 +304,70 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
     };
 
     const slots = statusInfo.isAvailable ? getHourlySlots(statusInfo.open, statusInfo.close) : [];
-    const dayReservations = monthlyReservations.filter(
-        (r) => r.resDate === form.date && r.resStatus !== '취소' && r.resStatus !== '거절'
-    );
+    const dayReservations = monthlyReservations.filter((r) => {
+        // 현재 수정 중인 예약인 경우 목록에서 제외하여 본인 시간 슬롯을 자유롭게 다시 클릭할 수 있도록 함
+        const isEditingThisRes = editRes && (
+            r.resIdx?.toString() === editRes.id.replace('res-', '') ||
+            r.resIdx?.toString() === editResId.replace('res-', '')
+        );
+        if (isEditingThisRes) return false;
+        
+        const status = (r.resStatus || '').toUpperCase();
+        return r.resDate === form.date &&
+               status !== '취소' && status !== 'CANCELLED' && status !== 'CANCEL' &&
+               status !== '거절' && status !== 'REJECTED';
+    });
 
     const getSlotStatus = (slot) => {
-        const overlapping = dayReservations.find((r) => {
+        // 1. 해당 슬롯과 겹치는 예약들을 모두 찾음
+        const overlappingRes = dayReservations.filter((r) => {
             const rStart = r.resStart.slice(0, 5);
             const rEnd = r.resEnd.slice(0, 5);
             return rStart < slot.end && rEnd > slot.start;
         });
 
-        if (overlapping) {
-            return {
-                status: overlapping.resStatus === '승인' ? 'approved' : 'waiting',
-                label: overlapping.resStatus === '승인' ? '예약 완료' : '대기 중',
-                purpose: overlapping.resPurpose,
-            };
+        if (overlappingRes.length > 0) {
+            // 승인된 예약이 하나라도 있으면 무조건 'approved' (예약 완료)
+            const hasApproved = overlappingRes.some((r) => {
+                const status = (r.resStatus || '').toUpperCase();
+                return status === '승인' || status === 'APPROVED' || status === 'CONFIRMED' || status === '승인완료' || status === '승인 완료';
+            });
+
+            if (hasApproved) {
+                return {
+                    status: 'approved',
+                    label: '예약 완료',
+                    purpose: overlappingRes.find(r => {
+                        const status = (r.resStatus || '').toUpperCase();
+                        return status === '승인' || status === 'APPROVED' || status === 'CONFIRMED' || status === '승인완료' || status === '승인 완료';
+                    })?.resPurpose
+                };
+            }
+
+            // 승인된 것은 없고 대기만 있는 경우
+            // 내 예약 목록의 resIdx 목록 세트 생성
+            const myResIdxSet = new Set(reservations.map(r => r.id.replace('res-', '').toString()));
+            
+            // 내 대기 중 예약이 포함되어 있는지 확인
+            const hasMyWaiting = overlappingRes.some((r) => myResIdxSet.has(r.resIdx?.toString()));
+
+            if (hasMyWaiting) {
+                // 본인의 대기 중 신청이 있는 경우 -> 예약 선택 불가
+                return {
+                    status: 'waiting-mine',
+                    label: '내 예약 대기',
+                    purpose: overlappingRes.find(r => myResIdxSet.has(r.resIdx?.toString()))?.resPurpose
+                };
+            } else {
+                // 타인의 대기 중 신청만 있는 경우 -> 중복 예약 선택 가능!
+                return {
+                    status: 'waiting-others',
+                    label: '승인 대기',
+                    purpose: overlappingRes[0].resPurpose
+                };
+            }
         }
+
         return { status: 'available', label: '예약 가능' };
     };
 
@@ -327,7 +382,7 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
     };
 
     const handleSlotClick = (slot, status) => {
-        if (status !== 'available') return;
+        if (status !== 'available' && status !== 'waiting-others') return;
         
         if (timeSelectStep === 0 || timeSelectStep === 2) {
             setForm((prev) => ({
@@ -338,6 +393,20 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
             setTimeSelectStep(1);
         } else if (timeSelectStep === 1) {
             if (slot.start > form.startTime) {
+                // 시작 시간과 클릭한 종료 시간 사이에 이미 예약된 슬롯이 있는지 확인
+                const hasOverlap = slots.some(s => {
+                    if (s.start >= form.startTime && s.end <= slot.end) {
+                        const sStatus = getSlotStatus(s).status;
+                        return sStatus !== 'available' && sStatus !== 'waiting-others';
+                    }
+                    return false;
+                });
+
+                if (hasOverlap){
+                    setAlert({ type: 'warning', message: '선택한 범위 내에 이미 예약된 시간이 포함되어 있습니다.'});
+                    return;
+                }
+
                 setForm((prev) => ({
                     ...prev,
                     endTime: slot.end,
@@ -359,15 +428,18 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
 
     return (
         <div className="reservation-page-container">
+            {alert && createPortal(
+                <div className="fixed-top-alert">
+                    <Alert variant={alert.type.toLowerCase()} onClose={() => setAlert(null)} dismissible>
+                        {alert.message}
+                    </Alert>
+                </div>,
+                document.body
+            )}
+
             {/* 왼쪽: 예약 신청서 폼 */}
             <div className="reservation-card">
                 <div className="section-title">{editRes ? '✍️ 예약 정보 수정' : '✍️ 예약 신청서 작성'}</div>
-
-                {alert && (
-                    <Alert variant={alert.type} onClose={() => setAlert(null)} dismissible>
-                        {alert.message}
-                    </Alert>
-                )}
 
                 <Form onSubmit={handleSubmit}>
                     {/* 시설 선택 */}
@@ -518,9 +590,20 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                                  {dayCells.map((day) => {
                                     const isSelected = formYear === calendarYear && formMonth === calendarMonth && formDay === day;
                                     const dateStr = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                    const dRes = monthlyReservations.filter((r) => r.resDate === dateStr && r.resStatus !== '취소' && r.resStatus !== '거절');
-                                    const hasApproved = dRes.some((r) => r.resStatus === '승인');
-                                    const hasWaiting = dRes.some((r) => r.resStatus === '대기');
+                                    const dRes = monthlyReservations.filter((r) => {
+                                        const status = (r.resStatus || '').toUpperCase();
+                                        return r.resDate === dateStr &&
+                                               status !== '취소' && status !== 'CANCELLED' && status !== 'CANCEL' &&
+                                               status !== '거절' && status !== 'REJECTED';
+                                    });
+                                    const hasApproved = dRes.some((r) => {
+                                        const status = (r.resStatus || '').toUpperCase();
+                                        return status === '승인' || status === 'APPROVED' || status === 'CONFIRMED' || status === '승인완료' || status === '승인 완료';
+                                    });
+                                    const hasWaiting = dRes.some((r) => {
+                                        const status = (r.resStatus || '').toUpperCase();
+                                        return status === '대기' || status === 'PENDING' || status === 'WAITING' || status === '대기중' || status === '대기 중';
+                                    });
                                     const isSelectable = isDateAvailable(dateStr);
 
                                     return (
@@ -578,7 +661,11 @@ const ReservationForm = ({ preSelectedFacilityId = '' }) => {
                                             <span>예약 가능</span>
                                         </div>
                                         <div className="legend-item">
-                                            <div className="legend-color waiting" />
+                                            <div className="legend-color waiting-mine" />
+                                            <span>내 예약 대기</span>
+                                        </div>
+                                        <div className="legend-item">
+                                            <div className="legend-color waiting-others" />
                                             <span>승인 대기</span>
                                         </div>
                                         <div className="legend-item">

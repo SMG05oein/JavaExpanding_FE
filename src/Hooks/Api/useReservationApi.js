@@ -317,10 +317,13 @@ const useReservationApi = () => {
         }
     }, [baseURL, loadMyReservations]);
 
-    // 7. 특정 시설물의 월간 예약 현황 조회
+    // 7. 특정 시설물 또는 전체 시설물의 월간 예약 현황 조회
     const loadFacilityCalendar = useCallback(async (facIdx, year, month) => {
         try {
-            const response = await axios.get(`${baseURL}/api/reservation/facility/${facIdx}/calendar?year=${year}&month=${month}`, {
+            const url = facIdx === 'all' 
+                ? `${baseURL}/api/reservation/calendar?year=${year}&month=${month}`
+                : `${baseURL}/api/reservation/facility/${facIdx}/calendar?year=${year}&month=${month}`;
+            const response = await axios.get(url, {
                 headers: { Accept: '*/*' }
             });
             return response.data || [];

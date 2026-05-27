@@ -33,18 +33,24 @@ const AdminApprovals = () => {
         try {
             const data = await loadApprovals(p);
             const content = data?.content ?? [];
-            setApprovals(content.map(a => ({
-                appIdx: a.appIdx,
-                resIdx: a.reservation?.resIdx || a.resIdx || '-',
-                user: a.reservation?.user?.userId || a.userId || '-',
-                facility: a.reservation?.facility?.facName || '-',
-                date: a.reservation?.resDate || '-',
-                start: formatTime(a.reservation?.resStart),
-                end: formatTime(a.reservation?.resEnd),
-                isApproved: a.appIsApprov,
-                comment: a.appComment || '',
-                processedAt: a.appCreateDt || '',
-            })));
+            setApprovals(content.map(a => {
+                const userName = a.reservation?.user?.userName || a.userName || '';
+                const userId = a.reservation?.user?.userId || a.userId || '';
+                const userDisplay = userName && userId ? `${userName} (${userId})` : (userName || userId || '-');
+
+                return {
+                    appIdx: a.appIdx,
+                    resIdx: a.reservation?.resIdx || a.resIdx || '-',
+                    user: userDisplay,
+                    facility: a.reservation?.facility?.facName || a.facility?.facName || '-',
+                    date: a.reservation?.resDate || '-',
+                    start: formatTime(a.reservation?.resStart),
+                    end: formatTime(a.reservation?.resEnd),
+                    isApproved: a.appIsApprov,
+                    comment: a.appComment || '',
+                    processedAt: a.appCreateDt || '',
+                };
+            }));
             setTotalPages(data?.totalPages ?? 1);
         } catch (e) {
             showToast('승인 내역 로딩 실패', 'error');
@@ -79,7 +85,7 @@ const AdminApprovals = () => {
                             <tr>
                                 <th>승인 ID</th>
                                 <th>예약 ID</th>
-                                <th>예약자</th>
+                                <th>신청자</th>
                                 <th>시설</th>
                                 <th>날짜</th>
                                 <th>시간</th>

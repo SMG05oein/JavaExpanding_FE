@@ -28,3 +28,35 @@
     background-color: #3C3489 !important;
     border-color: #3C3489 !important;
 }
+
+.fixed-top-alert {
+    position: fixed;
+    width: 100%;
+    top: 71px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    min-width: 450px;
+    max-width: 90%;
+    /*box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);*/
+    animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+    from {
+        transform: translate(-50%, -20px);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 576px) {
+    .fixed-top-alert {
+        min-width: auto;
+        width: 90%;
+        top: 70px;
+    }
+}

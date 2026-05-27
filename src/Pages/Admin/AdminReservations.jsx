@@ -84,9 +84,7 @@ const AdminReservations = () => {
                 const response = await axios.get(`${baseURL}/api/facility/allList`);
                 const data = response.data || [];
                 setFacilitiesList(data);
-                if (data.length > 0) {
-                    setSelectedFacId(data[0].facIdx);
-                }
+                setSelectedFacId('all'); // 기본값을 전체 시설물로 설정
             } catch (err) {
                 console.error('시설 목록 로드 실패', err);
             }
@@ -142,17 +140,33 @@ const AdminReservations = () => {
         try {
             const data = await loadAllReservations(p);
             const content = data?.content ?? [];
-            setReservations(content.map(r => ({
-                resIdx: r.resIdx,
-                user: r.user?.userId || r.userId || '-',
-                facility: r.facility?.facName || '-',
-                date: r.resDate,
-                start: formatTime(r.resStart),
-                end: formatTime(r.resEnd),
-                purpose: r.resPurpose || '-',
-                headcount: r.resHeadcount,
-                status: r.resStatus || '대기',
-            })));
+            setReservations(content.map(r => {
+                const status = (r.resStatus || '').toUpperCase();
+                let normalizedStatus = '대기';
+                if (status === '승인' || status === 'APPROVED' || status === 'CONFIRMED' || status === '승인완료' || status === '승인 완료') {
+                    normalizedStatus = '승인';
+                } else if (status === '거절' || status === 'REJECTED' || status === '반려' || status === '반려됨') {
+                    normalizedStatus = '거절';
+                } else if (status === '취소' || status === 'CANCELLED' || status === 'CANCEL' || status === '취소됨') {
+                    normalizedStatus = '취소';
+                }
+
+                const userName = r.user?.userName || r.userName || '';
+                const userId = r.user?.userId || r.userId || '';
+                const userDisplay = userName && userId ? `${userName} (${userId})` : (userName || userId || '-');
+
+                return {
+                    resIdx: r.resIdx,
+                    user: userDisplay,
+                    facility: r.facility?.facName || r.facName || '-',
+                    date: r.resDate,
+                    start: formatTime(r.resStart),
+                    end: formatTime(r.resEnd),
+                    purpose: r.resPurpose || r.purpose || '-',
+                    headcount: r.resHeadcount || r.resHead,
+                    status: normalizedStatus,
+                };
+            }));
             setTotalPages(data?.totalPages ?? 1);
         } catch (e) {
             showToast('예약 목록 로딩 실패', 'error');
@@ -297,7 +311,7 @@ const AdminReservations = () => {
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>예약자</th>
+                                    <th>신청자</th>
                                     <th>시설</th>
                                     <th>날짜</th>
                                     <th>시간</th>
@@ -367,18 +381,18 @@ const AdminReservations = () => {
                     {/* Left Column: Calendar Card */}
                     <div className="admin-calendar-card">
                         <div className="admin-select-wrapper">
-                            <select
-                                id="fac-select"
-                                className="admin-select"
-                                value={selectedFacId}
-                                onChange={(e) => setSelectedFacId(Number(e.target.value))}
-                            >
-                                <option value="" disabled>시설을 선택하세요</option>
-                                {facilitiesList.map((fac) => (
-                                    <option key={fac.facIdx} value={fac.facIdx}>
-                                        {fac.facName}
-                                    </option>
-                                ))}
+                             <select
+                                 id="fac-select"
+                                 className="admin-select"
+                                 value={selectedFacId}
+                                 onChange={(e) => setSelectedFacId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                             >
+                                 <option value="all">🌐 전체 시설물 보기</option>
+                                 {facilitiesList.map((fac) => (
+                                     <option key={fac.facIdx} value={fac.facIdx}>
+                                         🏢 {fac.facName}
+                                     </option>
+                                 ))}
                             </select>
                         </div>
                         
@@ -409,9 +423,20 @@ const AdminReservations = () => {
                                 const isActive = selectedDate === dateStr;
                                 const isToday = new Date().toISOString().slice(0, 10) === dateStr;
                                 
-                                 const dayRes = monthlyReservations.filter((r) => r.resDate === dateStr && r.resStatus !== '취소' && r.resStatus !== '거절');
-                                const approvedCount = dayRes.filter((r) => r.resStatus === '승인').length;
-                                const waitingCount = dayRes.filter((r) => r.resStatus === '대기').length;
+                                 const dayRes = monthlyReservations.filter((r) => {
+                                     const status = (r.resStatus || '').toUpperCase();
+                                     return r.resDate === dateStr &&
+                                            status !== '취소' && status !== 'CANCELLED' && status !== 'CANCEL' &&
+                                            status !== '거절' && status !== 'REJECTED';
+                                 });
+                                 const approvedCount = dayRes.filter((r) => {
+                                     const status = (r.resStatus || '').toUpperCase();
+                                     return status === '승인' || status === 'APPROVED' || status === 'CONFIRMED' || status === '승인완료' || status === '승인 완료';
+                                 }).length;
+                                 const waitingCount = dayRes.filter((r) => {
+                                     const status = (r.resStatus || '').toUpperCase();
+                                     return status === '대기' || status === 'PENDING' || status === 'WAITING' || status === '대기중' || status === '대기 중';
+                                 }).length;
 
                                 return (
                                     <div
@@ -448,7 +473,16 @@ const AdminReservations = () => {
                                 monthlyReservations
                                     .filter(r => r.resDate === selectedDate)
                                     .map((r) => {
-                                        const statusInfo = STATUS_INFO[r.resStatus] || { cls: 'waiting', label: r.resStatus || '대기' };
+                                        const status = (r.resStatus || '').toUpperCase();
+                                        let matchedStatus = '대기';
+                                        if (status === '승인' || status === 'APPROVED' || status === 'CONFIRMED' || status === '승인완료' || status === '승인 완료') {
+                                            matchedStatus = '승인';
+                                        } else if (status === '거절' || status === 'REJECTED' || status === '반려' || status === '반려됨') {
+                                            matchedStatus = '거절';
+                                        } else if (status === '취소' || status === 'CANCELLED' || status === 'CANCEL' || status === '취소됨') {
+                                            matchedStatus = '취소';
+                                        }
+                                        const statusInfo = STATUS_INFO[matchedStatus] || { cls: 'waiting', label: r.resStatus || '대기' };
                                         return (
                                             <div key={r.resIdx} className="admin-detail-item">
                                                 <div className="admin-detail-item-header">
@@ -458,13 +492,14 @@ const AdminReservations = () => {
                                                     </span>
                                                 </div>
                                                 <div className="admin-detail-info">
-                                                    <div><strong>신청자:</strong> {r.user?.userId || r.userId || r.user || '-'}</div>
+                                                    <div><strong>시설물:</strong> {r.facName || r.facility || '-'}</div>
+                                                    <div><strong>신청자:</strong> {r.userName || r.user?.userName || r.user?.userId || r.userId || r.user || '-'}</div>
                                                     <div><strong>시간:</strong> {formatTime(r.resStart)} ~ {formatTime(r.resEnd)}</div>
-                                                    <div><strong>인원:</strong> {r.resHeadcount || r.headcount ? `${r.resHeadcount || r.headcount}명` : '-'}</div>
+                                                    <div><strong>인원:</strong> {r.resHeadcount || r.resHead || r.headcount ? `${r.resHeadcount || r.resHead || r.headcount}명` : '-'}</div>
                                                     <div><strong>목적:</strong> {r.resPurpose || r.purpose || '-'}</div>
                                                 </div>
                                                 <div className="admin-detail-actions">
-                                                    {r.resStatus !== '승인' && r.resStatus !== '취소' && (
+                                                    {matchedStatus !== '승인' && matchedStatus !== '취소' && (
                                                         <button
                                                             className="admin-action-btn approve"
                                                             onClick={() => handleApprove(r.resIdx)}
@@ -472,7 +507,7 @@ const AdminReservations = () => {
                                                             승인
                                                         </button>
                                                     )}
-                                                    {r.resStatus !== '거절' && r.resStatus !== '취소' && (
+                                                    {matchedStatus !== '거절' && matchedStatus !== '취소' && (
                                                         <button
                                                             className="admin-action-btn reject"
                                                             onClick={() => handleReject(r.resIdx)}

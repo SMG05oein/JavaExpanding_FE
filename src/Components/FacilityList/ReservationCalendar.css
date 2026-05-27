@@ -205,13 +205,28 @@
     transform: translateY(-1px);
 }
 
-/* 승인 대기 슬롯 */
-.time-slot-block.waiting {
-    border-color: #ffe3e3;
-    background-color: #fff5f5;
-    color: #c92a2a;
+/* 승인 대기 슬롯 (본인 신청 - 중복 예약 불가) */
+.time-slot-block.waiting-mine {
+    border-color: #a5d8ff;
+    background-color: #e7f5ff;
+    color: #1c7ed6;
     cursor: not-allowed;
     opacity: 0.85;
+}
+
+/* 승인 대기 슬롯 (타인 신청 - 중복 예약 가능) */
+.time-slot-block.waiting-others {
+    border-color: #ffd8a8;
+    background-color: #fff9db;
+    color: #e67e22;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.time-slot-block.waiting-others:hover {
+    background-color: #ffe8cc;
+    border-color: #f76707;
+    transform: translateY(-1px);
 }
 
 /* 승인 완료 슬롯 */
@@ -253,7 +268,8 @@
 }
 
 .legend-color.available { background-color: #f4fce3; border: 1px solid #d3f9d8; }
-.legend-color.waiting { background-color: #fff5f5; border: 1px solid #ffe3e3; }
+.legend-color.waiting-mine { background-color: #e7f5ff; border: 1px solid #a5d8ff; }
+.legend-color.waiting-others { background-color: #fff9db; border: 1px solid #ffd8a8; }
 .legend-color.approved { background-color: #e3fafc; border: 1px solid #e3fafc; }
 
 /* 예약 불가능한 달력 날짜 */

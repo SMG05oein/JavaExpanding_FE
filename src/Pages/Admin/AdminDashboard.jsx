@@ -31,8 +31,14 @@ const AdminDashboard = () => {
             ]);
 
             const content = resData?.content ?? [];
-            const waiting  = content.filter(r => r.resStatus === '대기').length;
-            const approved = content.filter(r => r.resStatus === '승인').length;
+            const waiting  = content.filter(r => {
+                const s = (r.resStatus || '').toUpperCase();
+                return s === '대기' || s === 'PENDING' || s === 'WAITING' || s === '대기중' || s === '대기 중';
+            }).length;
+            const approved = content.filter(r => {
+                const s = (r.resStatus || '').toUpperCase();
+                return s === '승인' || s === 'APPROVED' || s === 'CONFIRMED' || s === '승인완료' || s === '승인 완료';
+            }).length;
             const facCount = facData?.totalElements ?? facData?.content?.length ?? 0;
 
             setStats({
@@ -42,15 +48,31 @@ const AdminDashboard = () => {
                 facilities: facCount,
             });
 
-            setRecentReservations(content.slice(0, 5).map(r => ({
-                id: r.resIdx,
-                user: r.user?.userId || r.userId || '-',
-                facility: r.facility?.facName || '-',
-                date: r.resDate,
-                start: formatTime(r.resStart),
-                end: formatTime(r.resEnd),
-                status: r.resStatus || '대기',
-            })));
+            setRecentReservations(content.slice(0, 5).map(r => {
+                const status = (r.resStatus || '').toUpperCase();
+                let normalizedStatus = '대기';
+                if (status === '승인' || status === 'APPROVED' || status === 'CONFIRMED' || status === '승인완료' || status === '승인 완료') {
+                    normalizedStatus = '승인';
+                } else if (status === '거절' || status === 'REJECTED' || status === '반려' || status === '반려됨') {
+                    normalizedStatus = '거절';
+                } else if (status === '취소' || status === 'CANCELLED' || status === 'CANCEL' || status === '취소됨') {
+                    normalizedStatus = '취소';
+                }
+
+                const userName = r.user?.userName || r.userName || '';
+                const userId = r.user?.userId || r.userId || '';
+                const userDisplay = userName && userId ? `${userName} (${userId})` : (userName || userId || '-');
+
+                return {
+                    id: r.resIdx,
+                    user: userDisplay,
+                    facility: r.facility?.facName || r.facName || '-',
+                    date: r.resDate,
+                    start: formatTime(r.resStart),
+                    end: formatTime(r.resEnd),
+                    status: normalizedStatus,
+                };
+            }));
         } catch (e) {
             console.error('대시보드 로딩 실패', e);
         } finally {
@@ -107,7 +129,7 @@ const AdminDashboard = () => {
                         <thead>
                             <tr>
                                 <th>예약 ID</th>
-                                <th>예약자</th>
+                                <th>신청자</th>
                                 <th>시설</th>
                                 <th>날짜</th>
                                 <th>시간</th>
