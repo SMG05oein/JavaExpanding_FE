@@ -71,7 +71,7 @@ const FacilityModal = ({ initial, onSave, onClose }) => {
 
 const AdminFacilities = () => {
     const navigate = useNavigate();
-    const { loadFacilitiesAdmin, createFacility, updateFacility, deleteFacility } = useAdminApi();
+    const { loadFacilitiesAdmin, createFacility, updateFacility, deleteFacility, loadFacilityTimes } = useAdminApi();
     const [facilities, setFacilities] = useState([]);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -91,19 +91,32 @@ const AdminFacilities = () => {
         try {
             const data = await loadFacilitiesAdmin(p);
             const content = data?.content ?? [];
-            setFacilities(content.map(f => ({
-                facIdx: f.facIdx,
-                name: f.facName,
-                location: f.facLocation,
-                description: f.facDescription || '',
-            })));
+            const facilitiesWithTimes = await Promise.all(
+                content.map(async (f) => {
+                    let registeredCount = 0;
+                    try {
+                        const times = await loadFacilityTimes(f.facIdx);
+                        registeredCount = Array.isArray(times) ? times.length : 0;
+                    } catch (e) {
+                        console.error('시간 조회 실패', e);
+                    }
+                    return {
+                        facIdx: f.facIdx,
+                        name: f.facName,
+                        location: f.facLocation,
+                        description: f.facDescription || '',
+                        registeredCount,
+                    };
+                })
+            );
+            setFacilities(facilitiesWithTimes);
             setTotalPages(data?.totalPages ?? 1);
         } catch (e) {
             showToast('시설물 목록 로딩 실패', 'error');
         } finally {
             setLoading(false);
         }
-    }, [loadFacilitiesAdmin]);
+    }, [loadFacilitiesAdmin, loadFacilityTimes]);
 
     useEffect(() => { load(page); }, [load, page]);
 
@@ -179,6 +192,7 @@ const AdminFacilities = () => {
                                 <th>ID</th>
                                 <th>시설명</th>
                                 <th>위치</th>
+                                <th>운영 시간 상태</th>
                                 <th>설명</th>
                                 <th>관리</th>
                             </tr>
@@ -199,6 +213,14 @@ const AdminFacilities = () => {
                                         <td style={{ fontWeight: 600, color: '#6366f1' }}>#{f.facIdx}</td>
                                         <td style={{ fontWeight: 600 }}>{f.name}</td>
                                         <td>{f.location}</td>
+                                        <td style={{ whiteSpace: 'nowrap' }}>
+                                            <span style={{ display: 'inline-block', padding: '4px 8px', background: '#10b981', color: '#ffffff', borderRadius: 6, fontSize: 13, fontWeight: 800, border: '1px solid #059669', marginRight: 6, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                                                등록 {f.registeredCount}개
+                                            </span>
+                                            <span style={{ display: 'inline-block', padding: '3px 6px', background: '#fef2f2', color: '#ef4444', borderRadius: 6, fontSize: 12, fontWeight: 500, border: '1px solid #fecaca' }}>
+                                                미등록 {7 - f.registeredCount}개
+                                            </span>
+                                        </td>
                                         <td style={{ color: '#6b7280', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {f.description || '-'}
                                         </td>

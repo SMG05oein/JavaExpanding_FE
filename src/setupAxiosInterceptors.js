@@ -1,11 +1,40 @@
 import axios from 'axios';
+import useLoginStatus from './Hooks/Status/useLoginStatus';
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach((prom) => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
+const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    useLoginStatus.getState().setIsLoggedIn(false);
+    useLoginStatus.getState().setUser(null);
+    window.location.replace('/login');
+};
 
 const setupAxiosInterceptors = () => {
     // 1. 요청 인터셉터: 토큰 주입
     axios.interceptors.request.use(
         (config) => {
             const token = localStorage.getItem('token');
-            if (token && !config.headers['Authorization']) {
+            const url = config.url || '';
+            const isPublicEndpoint = 
+                url.includes('/api/public_auh/refresh') ||
+                url.includes('/api/auth/login') ||
+                url.includes('/api/admin/login');
+
+            if (token && !isPublicEndpoint && !config.headers['Authorization']) {
                 config.headers['Authorization'] = `Bearer ${token}`;
             }
             return config;
@@ -28,38 +57,76 @@ const setupAxiosInterceptors = () => {
                 !originalRequest.url.includes('/api/auth/login') &&
                 !originalRequest.url.includes('/api/admin/login')
             ) {
+                if (isRefreshing) {
+                    return new Promise((resolve, reject) => {
+                        failedQueue.push({ resolve, reject });
+                    })
+                        .then((token) => {
+                            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                            return axios(originalRequest);
+                        })
+                        .catch((err) => {
+                            return Promise.reject(err);
+                        });
+                }
+
                 originalRequest._retry = true;
+                isRefreshing = true;
+
                 const refreshToken = localStorage.getItem('refreshToken');
 
                 if (refreshToken) {
                     try {
-                        const baseURL = process.env.REACT_APP_API_URL;
-                        const refreshRes = await axios.post(`${baseURL}/api/public_auh/refresh`, null, {
-                            headers: { 'refreshToken': refreshToken }
+                        const baseURL = process.env.REACT_APP_API_URL || '';
+                        // 전역 인터셉터 영향을 받지 않도록 독립된 axios 인스턴스 생성
+                        const refreshAxios = axios.create();
+                        const refreshRes = await refreshAxios.post(`${baseURL}/api/public_auh/refresh`, null, {
+                            headers: {
+                                'accept': '*/*',
+                                'refreshToken': refreshToken
+                            }
                         });
                         
                         const newTokens = refreshRes.data;
-                        const newAccessToken = newTokens.accessToken || newTokens.token;
+                        const newAccessToken = newTokens && (
+                            newTokens.accessToken ||
+                            newTokens.token ||
+                            newTokens.jwt ||
+                            newTokens.authorization ||
+                            (Object.values(newTokens).find(v => typeof v === 'string' && v.length > 20))
+                        );
+
                         if (newAccessToken) {
                             localStorage.setItem('token', newAccessToken);
-                            if (newTokens.refreshToken) {
-                                localStorage.setItem('refreshToken', newTokens.refreshToken);
+
+                            const newRefreshToken = newTokens.refreshToken || newTokens.refresh_token;
+                            if (newRefreshToken) {
+                                localStorage.setItem('refreshToken', newRefreshToken);
                             }
-                            
-                            // 갱신된 토큰으로 헤더 교체 후 재시도
+
+                            // 헤더 설정
+                            axios.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
                             originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+
+                            processQueue(null, newAccessToken);
+                            isRefreshing = false;
+
+                            window.location.reload();
+
                             return axios(originalRequest);
+                        } else {
+                            throw new Error('Refresh response does not contain access token');
                         }
                     } catch (refreshError) {
                         console.error('리프레시 토큰 갱신 실패:', refreshError);
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('refreshToken');
-                        window.location.replace('/login');
+                        processQueue(refreshError, null);
+                        isRefreshing = false;
+                        handleLogout();
                         return Promise.reject(refreshError);
                     }
                 } else {
-                    localStorage.removeItem('token');
-                    window.location.replace('/login');
+                    isRefreshing = false;
+                    handleLogout();
                 }
             }
 
@@ -69,3 +136,4 @@ const setupAxiosInterceptors = () => {
 };
 
 export default setupAxiosInterceptors;
+

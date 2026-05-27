@@ -6,11 +6,14 @@ const useAdminApi = () => {
 
     const getAuthHeaders = () => {
         const token = localStorage.getItem('token');
-        return {
-            Authorization: `Bearer ${token}`,
+        const headers = {
             'Content-Type': 'application/json',
             Accept: '*/*',
         };
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+        return headers;
     };
 
     /* ─────────────────────────────────────────

@@ -1,5 +1,5 @@
 import './App.css';
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import React, { useEffect } from 'react';
 import MainPage from "./Pages/MainPage/MainPage";
 import GNB from "./GNB/GNB";
@@ -22,6 +22,7 @@ import AdminFacilityTimes from "./Pages/Admin/AdminFacilityTimes";
 
 function App() {
     const { isLoggedIn, fetchUser } = useLoginStatus();
+    const location = useLocation();
 
     // 앱 마운트 시 또는 로그인 변경 시 유저 정보를 실시간 로딩
     useEffect(() => {
@@ -29,6 +30,15 @@ function App() {
             fetchUser();
         }
     }, [isLoggedIn, fetchUser]);
+
+    // 페이지 이동 시 엑세스 토큰이 유실되었고 리프레시 토큰이 있다면 선제적으로 토큰 갱신 트리거
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!token && refreshToken) {
+            fetchUser();
+        }
+    }, [location, fetchUser]);
 
     return (
         <Routes>

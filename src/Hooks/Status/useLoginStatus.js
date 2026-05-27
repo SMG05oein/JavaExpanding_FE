@@ -48,7 +48,8 @@ const useLoginStatus = create(
             // 백엔드의 신규 '내 정보 조회' API를 호출하여 유저 정보 갱신
             fetchUser: async () => {
                 const token = localStorage.getItem('token');
-                if (!token) {
+                const refreshToken = localStorage.getItem('refreshToken');
+                if (!token && !refreshToken) {
                     set({ isLoggedIn: false, user: null });
                     return null;
                 }

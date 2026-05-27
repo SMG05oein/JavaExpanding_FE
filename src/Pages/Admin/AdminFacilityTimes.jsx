@@ -19,15 +19,15 @@ const Toast = ({ toast }) =>
 /* ── 등록/수정 모달 ── */
 const TimeModal = ({ facIdx, initial, onSave, onClose }) => {
     const isEdit = !!initial;
+    const [facDays, setFacDays] = useState(isEdit ? [initial.facDay] : []);
     const [form, setForm] = useState(
         isEdit
             ? {
-                facDay: initial.facDay,
                 facOpen: formatTimeStr(initial.facOpen),
                 facClose: formatTimeStr(initial.facClose),
                 facTimeStatus: initial.facTimeStatus,
             }
-            : EMPTY_FORM
+            : { facOpen: '09:00', facClose: '18:00', facTimeStatus: '운영중' }
     );
 
     function formatTimeStr(t) {
@@ -39,23 +39,45 @@ const TimeModal = ({ facIdx, initial, onSave, onClose }) => {
     }
 
     const handle = e => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+    const handleDayCheck = (day) => {
+        setFacDays(prev => 
+            prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+        );
+    };
 
     const handleSubmit = e => {
         e.preventDefault();
-        onSave({ facIdx, ...form });
+        if (facDays.length === 0) {
+            alert('최소 하나의 요일을 선택해주세요.');
+            return;
+        }
+        onSave({ facIdx, facDays, ...form });
     };
 
     return (
         <div className="admin-modal-backdrop">
             <div className="admin-modal-box">
-                <h5>{isEdit ? '운영 시간 수정' : '운영 시간 등록'}</h5>
+                <h5>{isEdit ? '운영 시간 수정' : '운영 시간 일괄 등록'}</h5>
                 <form onSubmit={handleSubmit}>
                     {/* 요일 */}
                     <div className="admin-form-group">
                         <label>요일</label>
-                        <select name="facDay" value={form.facDay} onChange={handle}>
-                            {FAC_DAYS.map(d => <option key={d} value={d}>{d}요일</option>)}
-                        </select>
+                        {isEdit ? (
+                            <input type="text" value={`${facDays[0]}요일`} disabled style={{ background: '#f3f4f6', cursor: 'not-allowed' }} />
+                        ) : (
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', padding: '8px 0' }}>
+                                {FAC_DAYS.map(d => (
+                                    <label key={d} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: 14 }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={facDays.includes(d)}
+                                            onChange={() => handleDayCheck(d)}
+                                        />
+                                        {d}
+                                    </label>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* 시간 */}
@@ -133,26 +155,35 @@ const AdminFacilityTimes = () => {
 
     useEffect(() => { load(); }, [load]);
 
-    const handleCreate = async (form) => {
-        try {
-            await createFacilityTime(form);
-            showToast('운영 시간이 등록되었습니다.');
-            setModal(null);
-            load();
-        } catch (e) {
-            showToast(e.response?.data || '등록 실패', 'error');
-        }
-    };
+    const handleSave = async (formData) => {
+        const { facIdx, facDays, facOpen, facClose, facTimeStatus } = formData;
+        let successCount = 0;
+        let failCount = 0;
 
-    const handleUpdate = async (form) => {
-        try {
-            await updateFacilityTime(modal.time.facTimeIdx, form);
-            showToast('운영 시간이 수정되었습니다.');
-            setModal(null);
-            load();
-        } catch (e) {
-            showToast(e.response?.data || '수정 실패', 'error');
+        await Promise.allSettled(facDays.map(async (day) => {
+            const existingTime = times.find(t => t.facDay === day);
+            const payload = { facIdx, facDay: day, facOpen, facClose, facTimeStatus };
+            try {
+                if (existingTime) {
+                    await updateFacilityTime(existingTime.facTimeIdx, payload);
+                } else {
+                    await createFacilityTime(payload);
+                }
+                successCount++;
+            } catch (e) {
+                failCount++;
+                console.error(`[${day}요일] 저장 실패`, e);
+            }
+        }));
+
+        if (failCount === 0) {
+            showToast(`${successCount}개 요일의 운영 시간이 성공적으로 저장되었습니다.`);
+        } else {
+            showToast(`${successCount}개 성공, ${failCount}개 실패.`, 'error');
         }
+        
+        setModal(null);
+        load();
     };
 
     const handleDelete = async (t) => {
@@ -178,7 +209,7 @@ const AdminFacilityTimes = () => {
                 <TimeModal
                     facIdx={Number(facIdx)}
                     initial={modal.mode === 'edit' ? modal.time : null}
-                    onSave={modal.mode === 'edit' ? handleUpdate : handleCreate}
+                    onSave={handleSave}
                     onClose={() => setModal(null)}
                 />
             )}

@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import axios from 'axios';
 import useReservationStore from '../../store/reservationStore';
-import useLoginStatus from '../Status/useLoginStatus';
+
 
 const useReservationApi = () => {
     const baseURL = process.env.REACT_APP_API_URL;
-    const logout = useLoginStatus((s) => s.logout);
+
 
     // Zustand actions
     const setFacilities = useReservationStore((s) => s.setFacilities);
@@ -86,11 +86,11 @@ const useReservationApi = () => {
     // 2. 로그인된 사용자의 예약 목록 조회
     const loadMyReservations = useCallback(async () => {
         const token = localStorage.getItem('token');
-        if (!token) return;
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!token && !refreshToken) return;
         try {
             const response = await axios.get(`${baseURL}/api/reservation/my?page=0`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Accept': '*/*'
                 }
             });
@@ -124,17 +124,14 @@ const useReservationApi = () => {
             setReservations(mappedReservations);
         } catch (error) {
             console.error('내 예약 목록 로드 실패:', error);
-            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                localStorage.removeItem('token');
-                logout();
-            }
         }
-    }, [baseURL, setReservations, logout]);
+    }, [baseURL, setReservations]);
 
     // 3. 예약 생성
     const createReservation = useCallback(async ({ facilityId, date, startTime, endTime, purpose, headcount }) => {
         const token = localStorage.getItem('token');
-        if (!token) return { success: false, message: '로그인이 필요합니다.' };
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!token && !refreshToken) return { success: false, message: '로그인이 필요합니다.' };
 
         const facIdx = parseInt(facilityId.replace('fac-', ''));
         if (isNaN(facIdx)) {
@@ -163,7 +160,6 @@ const useReservationApi = () => {
                 resHeadcount: parseInt(headcount)
             }, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                     'Accept': '*/*'
                 }
@@ -177,20 +173,16 @@ const useReservationApi = () => {
             };
         } catch (error) {
             console.error('예약 생성 API 에러:', error);
-            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                localStorage.removeItem('token');
-                logout();
-                return { success: false, message: '인증에 실패했습니다. 다시 로그인해 주세요.' };
-            }
             const errMsg = error.response?.data?.message || error.response?.data || '예약 생성에 실패했습니다.';
             return { success: false, message: errMsg };
         }
-    }, [baseURL, logout, loadMyReservations]);
+    }, [baseURL, loadMyReservations]);
 
     // 4. 예약 취소
     const cancelReservation = useCallback(async (reservationId) => {
         const token = localStorage.getItem('token');
-        if (!token) return { success: false, message: '로그인이 필요합니다.' };
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!token && !refreshToken) return { success: false, message: '로그인이 필요합니다.' };
 
         const resIdx = parseInt(reservationId.replace('res-', ''));
         if (isNaN(resIdx)) {
@@ -200,7 +192,6 @@ const useReservationApi = () => {
         try {
             await axios.post(`${baseURL}/api/reservation/cancel/${resIdx}`, {}, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Accept': '*/*'
                 }
             });
@@ -209,15 +200,10 @@ const useReservationApi = () => {
             return { success: true, message: '예약이 성공적으로 취소되었습니다.' };
         } catch (error) {
             console.error('예약 취소 API 에러:', error);
-            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                localStorage.removeItem('token');
-                logout();
-                return { success: false, message: '인증에 실패했습니다. 다시 로그인해 주세요.' };
-            }
             const errMsg = error.response?.data?.message || '예약 취소에 실패했습니다.';
             return { success: false, message: errMsg };
         }
-    }, [baseURL, logout, loadMyReservations]);
+    }, [baseURL, loadMyReservations]);
 
     // 5. 전체 시설 목록 로드 (실시간 예약하기 전용)
     const loadAllFacilities = useCallback(async () => {
@@ -278,7 +264,8 @@ const useReservationApi = () => {
     // 6. 예약 수정
     const updateReservation = useCallback(async (reservationId, { facilityId, date, startTime, endTime, purpose, headcount }) => {
         const token = localStorage.getItem('token');
-        if (!token) return { success: false, message: '로그인이 필요합니다.' };
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!token && !refreshToken) return { success: false, message: '로그인이 필요합니다.' };
 
         const resIdx = parseInt(reservationId.replace('res-', ''));
         if (isNaN(resIdx)) {
@@ -312,7 +299,6 @@ const useReservationApi = () => {
                 resHeadcount: parseInt(headcount)
             }, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                     'Accept': '*/*'
                 }
@@ -326,15 +312,10 @@ const useReservationApi = () => {
             };
         } catch (error) {
             console.error('예약 수정 API 에러:', error);
-            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                localStorage.removeItem('token');
-                logout();
-                return { success: false, message: '인증에 실패했습니다. 다시 로그인해 주세요.' };
-            }
             const errMsg = error.response?.data?.message || error.response?.data || '예약 수정에 실패했습니다.';
             return { success: false, message: errMsg };
         }
-    }, [baseURL, logout, loadMyReservations]);
+    }, [baseURL, loadMyReservations]);
 
     return {
         loadFacilities,
